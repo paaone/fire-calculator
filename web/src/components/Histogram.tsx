@@ -20,7 +20,7 @@ export default function Histogram({ values, bins = 30, title }: { values: number
     count,
   }))
   return (
-    <div style={{ width: '100%', height: 260 }}>
+    <div className="panel" style={{ width: '100%', height: 280 }}>
       <div style={{ fontWeight: 600, marginBottom: 8 }}>{title ?? 'Ending Balance Distribution'}</div>
       <ResponsiveContainer>
         <BarChart data={data} margin={{ left: 8, right: 8, top: 10, bottom: 0 }}>
@@ -34,4 +34,3 @@ export default function Histogram({ values, bins = 30, title }: { values: number
     </div>
   )
 }
-
