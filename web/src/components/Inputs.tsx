@@ -10,9 +10,13 @@ export default function Inputs(props: {
   vpwPct: number; onVpwPct: (v: number) => void
   guardBand: number; onGuardBand: (v: number) => void
   guardStep: number; onGuardStep: (v: number) => void
+  startDelayYears: number; onStartDelay: (v: number) => void
+  annualContrib: number; onAnnualContrib: (v: number) => void
+  incomeAmount: number; onIncomeAmount: (v: number) => void
+  incomeStartYear: number; onIncomeStartYear: (v: number) => void
   onRun: () => void; running: boolean
 }) {
-  const { initial, onInitial, spend, onSpend, years, onYears, strategy, onStrategy, vpwPct, onVpwPct, guardBand, onGuardBand, guardStep, onGuardStep, onRun, running } = props
+  const { initial, onInitial, spend, onSpend, years, onYears, strategy, onStrategy, vpwPct, onVpwPct, guardBand, onGuardBand, guardStep, onGuardStep, startDelayYears, onStartDelay, annualContrib, onAnnualContrib, incomeAmount, onIncomeAmount, incomeStartYear, onIncomeStartYear, onRun, running } = props
   return (
     <div className="panel vstack">
       <div>
@@ -60,11 +64,42 @@ export default function Inputs(props: {
         </div>
       )}
 
+      <div className="divider" />
+      <div>
+        <h3 className="title" style={{ fontSize: 18 }}>Optional: Other Income</h3>
+        <div className="subtitle">Use Social Security, pensions, or other recurring income to offset withdrawals.</div>
+        <div className="row">
+          <div>
+            <label className="label">Annual income (real) <InfoTip title="Recurring income">Amount received each year in retirement. The portfolio withdraws only what income does not cover.</InfoTip></label>
+            <input className="input" type="number" value={incomeAmount} onChange={(e) => onIncomeAmount(Number(e.target.value))} min={0} step={500} />
+          </div>
+          <div>
+            <label className="label">Starts in year <InfoTip title="Start year">First retirement year this income begins (0 = first year of retirement).</InfoTip></label>
+            <input className="input" type="number" value={incomeStartYear} onChange={(e) => onIncomeStartYear(Number(e.target.value))} min={0} max={60} step={1} />
+          </div>
+        </div>
+      </div>
+
+      <div className="divider" />
+      <div>
+        <h3 className="title" style={{ fontSize: 18 }}>Optional: Future Retirement</h3>
+        <div className="subtitle">Delay retirement, save until then, and test the full path.</div>
+        <div className="row">
+          <div>
+            <label className="label">Years until retirement <InfoTip title="Start delay">No withdrawals before this; contributions are added each year.</InfoTip></label>
+            <input className="input" type="number" value={startDelayYears} onChange={(e) => onStartDelay(Number(e.target.value))} min={0} max={40} step={1} />
+          </div>
+          <div>
+            <label className="label">Annual savings until then <InfoTip title="Annual contributions">Amount added to the portfolio each year before retirement.</InfoTip></label>
+            <input className="input" type="number" value={annualContrib} onChange={(e) => onAnnualContrib(Number(e.target.value))} min={0} step={1000} />
+          </div>
+        </div>
+      </div>
+
       <button className="btn" onClick={onRun} disabled={running}>{running ? 'Running…' : 'Run simulation'}</button>
 
       <div className="divider" />
-      <div className="help">About FireCalc-style analysis: FireCalc popularized historical backtesting for retirement planning: it runs your plan through each real historical sequence of returns to show how often the portfolio succeeded for your chosen length. That success rate, plus distributions of outcomes, helps gauge sequence-of-returns risk beyond a single average return.</div>
+      <div className="help">Big question: Can you retire and maintain your lifestyle with what you have and what it costs to live? Averages hide sequence risk. This runs your plan through every historical start year to show how often it works, plus a Monte Carlo view for “what-if” variability.</div>
     </div>
   )
 }
-

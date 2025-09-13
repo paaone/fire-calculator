@@ -17,48 +17,60 @@ class Strategy:
     adjust_step: float | None = None
 
 
-def _simulate_path(
+def _simulate_path_with_planning(
     monthly_returns: np.ndarray,
     initial_balance: float,
     annual_spending: float,
     years: int,
     strategy: Strategy,
+    start_delay_years: int = 0,
+    annual_contrib: float = 0.0,
+    income_amount: float = 0.0,
+    income_start_year: int = 0,
 ) -> Tuple[np.ndarray, float]:
-    months = years * 12
-    if months > len(monthly_returns):
+    months_total = (start_delay_years + years) * 12
+    if months_total > len(monthly_returns):
         raise ValueError("Not enough monthly returns for requested horizon")
     balance = float(initial_balance)
-    balances = np.empty(months, dtype=float)
+    balances = np.empty(months_total, dtype=float)
     spend_this_year = float(annual_spending)
     initial_wr = (annual_spending / initial_balance) if initial_balance > 0 else 0.0
-    for m in range(months):
+    for m in range(months_total):
         balance *= (1.0 + monthly_returns[m])
         if (m + 1) % 12 == 0:
-            if strategy.type == "fixed":
-                spend = spend_this_year
-            elif strategy.type == "variable_percentage":
-                pct = strategy.percentage or 0.04
-                spend = balance * pct
-            elif strategy.type == "guardrails":
-                band = strategy.guard_band if strategy.guard_band is not None else 0.20
-                step = strategy.adjust_step if strategy.adjust_step is not None else 0.10
-                current_wr = (spend_this_year / balance) if balance > 0 else float("inf")
-                lower = initial_wr * (1.0 - band)
-                upper = initial_wr * (1.0 + band)
-                if current_wr > upper:
-                    spend_this_year *= (1.0 - step)
-                elif current_wr < lower:
-                    spend_this_year *= (1.0 + step)
-                spend = spend_this_year
+            year_index = m // 12  # 0-based
+            if year_index < start_delay_years:
+                balance += max(0.0, annual_contrib)
             else:
-                spend = spend_this_year
-            if spend > balance:
-                balance = 0.0
-                balances[m] = 0.0
-                if m < months - 1:
-                    balances[m + 1 :] = 0.0
-                return balances, 0.0
-            balance -= spend
+                if strategy.type == "fixed":
+                    spend = spend_this_year
+                elif strategy.type == "variable_percentage":
+                    pct = strategy.percentage or 0.04
+                    spend = balance * pct
+                elif strategy.type == "guardrails":
+                    band = strategy.guard_band if strategy.guard_band is not None else 0.20
+                    step = strategy.adjust_step if strategy.adjust_step is not None else 0.10
+                    current_wr = (spend_this_year / balance) if balance > 0 else float("inf")
+                    lower = initial_wr * (1.0 - band)
+                    upper = initial_wr * (1.0 + band)
+                    if current_wr > upper:
+                        spend_this_year *= (1.0 - step)
+                    elif current_wr < lower:
+                        spend_this_year *= (1.0 + step)
+                    spend = spend_this_year
+                else:
+                    spend = spend_this_year
+
+                retire_year = year_index - start_delay_years
+                income = income_amount if retire_year >= max(0, income_start_year) else 0.0
+                net = max(spend - income, 0.0)
+                if net > balance:
+                    balance = 0.0
+                    balances[m] = 0.0
+                    if m < months_total - 1:
+                        balances[m + 1 :] = 0.0
+                    return balances, 0.0
+                balance -= net
         balances[m] = balance
     return balances, balance
 
@@ -69,14 +81,28 @@ def simulate_historical(
     annual_spending: float,
     years: int,
     strategy: Strategy,
+    start_delay_years: int = 0,
+    annual_contrib: float = 0.0,
+    income_amount: float = 0.0,
+    income_start_year: int = 0,
 ) -> Dict:
-    months = years * 12
+    months = (start_delay_years + years) * 12
     r = returns.values.astype(float)
     windows = []
     endings = []
     for start in range(0, len(r) - months + 1):
         path = r[start : start + months]
-        balances, final_bal = _simulate_path(path, initial_balance, annual_spending, years, strategy)
+        balances, final_bal = _simulate_path_with_planning(
+            path,
+            initial_balance,
+            annual_spending,
+            years,
+            strategy,
+            start_delay_years,
+            annual_contrib,
+            income_amount,
+            income_start_year,
+        )
         windows.append(balances)
         endings.append(final_bal)
     windows_arr = np.vstack(windows)
@@ -113,14 +139,28 @@ def simulate_monte_carlo(
     strategy: Strategy,
     n_paths: int = 1000,
     block_size: int = 12,
+    start_delay_years: int = 0,
+    annual_contrib: float = 0.0,
+    income_amount: float = 0.0,
+    income_start_year: int = 0,
 ) -> Dict:
-    months = years * 12
+    months = (start_delay_years + years) * 12
     base = historical_returns.values.astype(float)
     windows = []
     endings = []
     for _ in range(int(n_paths)):
         path_returns = _bootstrap_monthly_returns(base, months, block_size)
-        balances, final_bal = _simulate_path(path_returns, initial_balance, annual_spending, years, strategy)
+        balances, final_bal = _simulate_path_with_planning(
+            path_returns,
+            initial_balance,
+            annual_spending,
+            years,
+            strategy,
+            start_delay_years,
+            annual_contrib,
+            income_amount,
+            income_start_year,
+        )
         windows.append(balances)
         endings.append(final_bal)
     windows_arr = np.vstack(windows)
@@ -138,4 +178,3 @@ def simulate_monte_carlo(
         "quantiles": {"p10": q10, "p50": q50, "p90": q90},
         "sample_path": sample_path,
     }
-

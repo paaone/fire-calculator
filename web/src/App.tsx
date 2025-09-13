@@ -17,6 +17,10 @@ export default function App() {
   const [vpwPct, setVpwPct] = useState(4)
   const [guardBand, setGuardBand] = useState(20)
   const [guardStep, setGuardStep] = useState(10)
+  const [startDelayYears, setStartDelayYears] = useState(0)
+  const [annualContrib, setAnnualContrib] = useState(0)
+  const [incomeAmount, setIncomeAmount] = useState(0)
+  const [incomeStartYear, setIncomeStartYear] = useState(0)
 
   const strategy: Strategy = useMemo(() => {
     if (strategyName === 'variable_percentage') return { type: 'variable_percentage', percentage: vpwPct / 100 }
@@ -24,7 +28,13 @@ export default function App() {
     return { type: 'fixed' }
   }, [strategyName, vpwPct, guardBand, guardStep])
 
-  const req: SimRequest = useMemo(() => ({ initial, spend, years, strategy }), [initial, spend, years, strategy])
+  const req: SimRequest = useMemo(() => ({
+    initial, spend, years, strategy,
+    start_delay_years: startDelayYears,
+    annual_contrib: annualContrib,
+    income_amount: incomeAmount,
+    income_start_year: incomeStartYear,
+  }), [initial, spend, years, strategy, startDelayYears, annualContrib, incomeAmount, incomeStartYear])
 
   const histQuery = useQuery({
     queryKey: ['historical', req],
@@ -54,9 +64,17 @@ export default function App() {
       <div className="hstack" style={{ justifyContent: 'space-between', marginBottom: 16 }}>
         <div>
           <h1 className="title" style={{ fontSize: 28 }}>FIRE Calculator</h1>
-          <p className="subtitle">Historical backtesting with real US market returns + Monte Carlo.</p>
+          <p className="subtitle">Skip averages. Test every start year and see how often your plan survives.</p>
         </div>
         <span className="badge">beta</span>
+      </div>
+
+      <div className="panel" style={{ marginBottom: 16 }}>
+        <div className="hstack" style={{ gap: 12, flexWrap: 'wrap' }}>
+          <div><strong>Your question:</strong> Can you retire and maintain your lifestyle with what you have?</div>
+          <div className="help">Averages hide sequence risk. 1973 vs. 1975 can be worlds apart.</div>
+        </div>
+        <div className="help" style={{ marginTop: 6 }}>This tool runs your plan through every historical sequence (plus Monte Carlo) to show success rate and likely ranges. Add Social Security/pensions, or delay retirement and keep saving.</div>
       </div>
 
       <div className="grid grid-2">
@@ -68,6 +86,10 @@ export default function App() {
           vpwPct={vpwPct} onVpwPct={setVpwPct}
           guardBand={guardBand} onGuardBand={setGuardBand}
           guardStep={guardStep} onGuardStep={setGuardStep}
+          startDelayYears={startDelayYears} onStartDelay={setStartDelayYears}
+          annualContrib={annualContrib} onAnnualContrib={setAnnualContrib}
+          incomeAmount={incomeAmount} onIncomeAmount={setIncomeAmount}
+          incomeStartYear={incomeStartYear} onIncomeStartYear={setIncomeStartYear}
           onRun={() => { histQuery.refetch(); mcQuery.refetch() }} running={loading}
         />
 
@@ -83,8 +105,8 @@ export default function App() {
             </div>
           )}
 
-          {hist && <ProjectionChart data={toSeries(hist)} title="Historical projection (P10–P90 band, median line)" />}
-          {mc && <ProjectionChart data={toSeries(mc)} title="Monte Carlo projection (P10–P90 band, median line)" />}
+          {hist && <ProjectionChart data={toSeries(hist)} title="Historical projection" retireAtMonths={startDelayYears * 12} />}
+          {mc && <ProjectionChart data={toSeries(mc)} title="Monte Carlo projection" retireAtMonths={startDelayYears * 12} />}
           {hist && <Histogram values={hist.ending_balances} title="Historical ending balances" />}
         </div>
       </div>

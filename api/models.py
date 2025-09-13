@@ -30,6 +30,11 @@ class SimRequest(BaseModel):
     spend: float = Field(40_000, ge=0)
     years: int = Field(30, ge=1, le=60)
     strategy: StrategyModel = Field(default_factory=StrategyModel)
+    # Optional: planning details
+    start_delay_years: int = Field(0, ge=0, le=40, description="Years until retirement start; no withdrawals until then")
+    annual_contrib: float = Field(0, ge=0, description="Annual savings contributed each year until retirement starts")
+    income_amount: float = Field(0, ge=0, description="Annual recurring income (SS/pension) during retirement")
+    income_start_year: int = Field(0, ge=0, le=60, description="Year in retirement when income starts (0 = first year)")
 
 
 class MCRequest(SimRequest):
@@ -50,4 +55,3 @@ class SimResult(BaseModel):
     ending_balances: list[float]
     quantiles: Quantiles
     sample_path: list[float]
-

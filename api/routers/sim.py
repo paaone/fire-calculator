@@ -34,6 +34,10 @@ def simulate_historical_api(req: SimRequest) -> Dict[str, Any]:
         annual_spending=req.spend,
         years=req.years,
         strategy=strategy,
+        start_delay_years=req.start_delay_years,
+        annual_contrib=req.annual_contrib,
+        income_amount=req.income_amount,
+        income_start_year=req.income_start_year,
     )
 
 
@@ -54,5 +58,8 @@ def simulate_montecarlo_api(req: MCRequest) -> Dict[str, Any]:
         strategy=strategy,
         n_paths=req.n_paths,
         block_size=req.block_size,
+        start_delay_years=req.start_delay_years,
+        annual_contrib=req.annual_contrib,
+        income_amount=req.income_amount,
+        income_start_year=req.income_start_year,
     )
-
