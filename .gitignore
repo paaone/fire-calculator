@@ -1,0 +1,49 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+*.log
+*.sqlite3
+*.db
+*.env
+.env*
+
+# Node/Vite/React
+web/node_modules/
+web/dist/
+web/.vite/
+web/.env*
+
+# Data
+*.csv
+*.tsv
+*.parquet
+*.h5
+*.hdf5
+*.xlsx
+*.xls
+*.tmp
+
+# OS/Editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Misc
+*.bak
+*.orig
+*.tmp
+*.cache
+
+# Ignore generated data but keep source
+!data/sp500_monthly.csv
+!data/market_monthly_real.csv

@@ -31,7 +31,7 @@ def main():
     parser.add_argument('--initial', type=float, default=1000000, help='Initial portfolio balance')
     parser.add_argument('--spend', type=float, default=40000, help='Annual spending')
     parser.add_argument('--years', type=int, default=30, help='Duration of retirement in years')
-    parser.add_argument('--data', default='data/sp500_monthly.csv', help='CSV file with monthly real returns')
+    parser.add_argument('--data', default='data/market_monthly_real.csv', help='CSV file with monthly real returns')
     args = parser.parse_args()
 
     returns = load_returns(args.data)

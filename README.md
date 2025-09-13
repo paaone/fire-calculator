@@ -1,57 +1,62 @@
 # Modern FIRE Calculator
 
-This repository explores the requirements for a modern replacement of the [FireCalc](https://www.firecalc.com/) retirement calculator and provides a small Python prototype of the core simulation engine.
+A modern, full‑stack FIRE calculator prototype with a FastAPI backend and a React + TypeScript frontend. It backtests against real US total market returns and includes a Monte Carlo simulator with flexible withdrawal strategies.
 
-## 🔍 FireCalc at a Glance
+## What’s Included
 
-FireCalc is a popular Financial Independence, Retire Early (FIRE) tool. Key characteristics:
+- Backend (`api/`): FastAPI service that
+  - Downloads and caches real monthly US market returns (CRSP value‑weighted "market" from the Kenneth French library combined with CPI from FRED) to `data/market_monthly_real.csv`.
+  - Endpoints for historical backtesting and Monte Carlo simulations.
+  - Strategies: fixed real withdrawals, variable‑percentage (VPW), and guardrails (Guyton–Klinger style adjustment).
+- Frontend (`web/`): Vite + React app with interactive inputs and charts (Recharts)
+  - Projection charts showing P10/P50/P90 quantiles over time.
+  - Histogram of ending balances.
 
-- **Input parameters** – starting portfolio, annual spending, retirement length and optional social security or pension income.
-- **Historical back‑testing** – uses U.S. stock/bond returns going back to the late 1800s. Each possible retirement window is tested to compute a *success rate* (how often money lasts for the full period).
-- **Fixed withdrawal strategy** – the same dollar amount (inflation adjusted) is withdrawn each year.
-- **Outputs** – success percentage, ending balances for each historical scenario and line charts for individual simulations.
+## Run It
 
-## 🧭 Requirements for a Modern Version
+Prereqs: Python 3.10+ and Node 18+.
 
-1. **Technology stack**
-   - **Frontend:** React + TypeScript with a charting library such as D3 or Plotly for smooth, interactive graphs.
-   - **Backend:** Python (FastAPI) or Node.js for fast API responses. Python is well suited for numerical work and reuses the prototype in this repo.
-   - **State management:** React Query/Recoil for instant updates when inputs change.
-2. **Core features**
-   - Real‑time graphs of portfolio value, success rate and distribution of outcomes.
-   - Ability to adjust asset allocation, withdrawal strategies (fixed, Guyton‑Klinger, variable) and add additional income streams.
-   - Display of historical sequences and Monte‑Carlo simulations side by side.
-   - Export/Share functionality for scenarios.
-3. **User experience**
-   - Clear explanations of each input with links to educational resources.
-   - Responsive layout and dark/light themes.
-   - Step‑by‑step mode for beginners plus an advanced tab for power users.
-4. **Model**
-   - Use long‑term U.S. market data (stocks, bonds and inflation) identical to the original FireCalc dataset.
-   - Portfolio growth: `balance = balance * (1 + monthly_return) - withdrawal` with withdrawals taken annually and adjusted for inflation.
-   - Success defined as ending balance ≥ 0 for the requested horizon.
+1) Backend
 
-## 🧮 Prototype Simulation
+- Install deps: `pip install -r requirements.txt`
+- Start API: `python -m uvicorn api.main:app --reload --port 8000`
 
-`firecalc.py` contains a minimal implementation of the back‑testing model. It expects a CSV file of monthly **real** (inflation adjusted) returns.
+The first run downloads market and CPI data and writes `data/market_monthly_real.csv`.
 
-Example:
+2) Frontend
+
+- `cd web`
+- `npm install`
+- Dev server: `npm run dev` (http://localhost:5173)
+
+The UI calls the API at `http://localhost:8000`.
+
+## API
+
+- `GET /api/returns/meta` → dataset coverage summary
+- `POST /api/simulate/historical`
+  - body: `{ initial, spend, years, strategy }`
+- `POST /api/simulate/montecarlo`
+  - body: `{ initial, spend, years, strategy, n_paths?, block_size? }`
+
+Strategy shapes:
+
+- Fixed: `{ "type": "fixed" }`
+- Variable percentage (VPW): `{ "type": "variable_percentage", "percentage": 0.04 }`
+- Guardrails: `{ "type": "guardrails", "guard_band": 0.20, "adjust_step": 0.10 }`
+
+Responses include success rate, ending balances, and monthly quantiles (P10/P50/P90).
+
+## CLI Prototype (optional)
+
+`firecalc.py` remains for quick CLI testing and now defaults to the real dataset:
 
 ```bash
 python firecalc.py --initial 1000000 --spend 40000 --years 30
 ```
 
-The script reports the percentage of historical periods in which the portfolio survived.
+## Notes on Data
 
-## 📊 Dataset
+- Market returns come from the Kenneth French “F‑F Research Data Factors” monthly file (CRSP value‑weighted market). Nominal returns are converted to real using CPI (FRED CPIAUCSL monthly). Coverage is 1947‑present.
+- The old synthetic dataset (`generate_data.py`, `data/sp500_monthly.csv`) is kept for reference but no longer used by default.
 
-The repository ships with `data/sp500_monthly.csv`, a synthetic dataset of U.S. stock market real returns from 1926‑2023. Values are generated from a normal distribution with a 0.67 % mean and 4.5 % standard deviation per month—roughly matching historical statistics. `generate_data.py` recreates the file.
-
-In a production application this dataset should be replaced with an authoritative source such as Shiller’s or Fama‑French market return series.
-
-## 🚀 Next Steps
-
-1. Replace the synthetic dataset with real historical returns.
-2. Wrap the simulation engine in a web API (FastAPI/Flask).
-3. Build a React interface that calls the API and renders charts.
-4. Add Monte‑Carlo simulation and flexible withdrawal strategies.
