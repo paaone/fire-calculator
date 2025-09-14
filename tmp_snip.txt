@@ -1,0 +1,7 @@
+          <div className="panel">
+            <div className="hstack" style={{ gap: 16, flexWrap: 'wrap' }}>
+              <div className="badge">FIRE target (25×): {currency(fireTarget)}</div>
+              {stillWorking && <div className="badge" style={{ background: '#dbeafe', borderColor: '#bfdbfe', color: '#1e3a8a' }}>Estimated FI year: {baseYear + estimatedYearsToFI}</div>}
+              {hist && <div className="badge" style={{ background: '#ecfdf5', borderColor: '#bbf7d0', color: '#065f46' }}>Historical success: {hist.success_rate.toFixed(1)}%</div>}
+              {mc && <div className="badge" style={{ background: '#ecfdf5', borderColor: '#bbf7d0', color: '#065f46' }}>Monte Carlo success: {mc.success_rate.toFixed(1)}%</div>}
+            </div>

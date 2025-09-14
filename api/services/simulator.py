@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, Literal, Tuple
+from typing import Dict, Literal, Tuple, List, Optional
 
 import numpy as np
 import pandas as pd
@@ -27,14 +27,29 @@ def _simulate_path_with_planning(
     annual_contrib: float = 0.0,
     income_amount: float = 0.0,
     income_start_year: int = 0,
+    other_incomes: Optional[List[Dict]] = None,
+    one_time_expenses: Optional[List[Dict]] = None,
+    assets: Optional[List[Dict]] = None,
 ) -> Tuple[np.ndarray, float]:
     months_total = (start_delay_years + years) * 12
     if months_total > len(monthly_returns):
         raise ValueError("Not enough monthly returns for requested horizon")
+    # If assets provided, sum to override initial
+    if assets:
+        total_assets = 0.0
+        for a in assets:
+            try:
+                total_assets += float(a.get("amount", 0.0))
+            except Exception:
+                pass
+        if total_assets > 0:
+            initial_balance = total_assets
     balance = float(initial_balance)
     balances = np.empty(months_total, dtype=float)
     spend_this_year = float(annual_spending)
     initial_wr = (annual_spending / initial_balance) if initial_balance > 0 else 0.0
+    other_incomes = other_incomes or []
+    one_time_expenses = one_time_expenses or []
     for m in range(months_total):
         balance *= (1.0 + monthly_returns[m])
         if (m + 1) % 12 == 0:
@@ -63,7 +78,25 @@ def _simulate_path_with_planning(
 
                 retire_year = year_index - start_delay_years
                 income = income_amount if retire_year >= max(0, income_start_year) else 0.0
+                # Add other recurring incomes that have started
+                for inc in other_incomes:
+                    try:
+                        amt = float(inc.get("amount", 0.0))
+                        start_y = int(inc.get("start_year", 0))
+                    except Exception:
+                        continue
+                    if retire_year >= max(0, start_y):
+                        income += max(0.0, amt)
                 net = max(spend - income, 0.0)
+                # Apply one-time expenses scheduled for this absolute year index
+                for exp in one_time_expenses:
+                    try:
+                        amt = float(exp.get("amount", 0.0))
+                        at_y = int(exp.get("at_year_from_now", -1))
+                    except Exception:
+                        continue
+                    if year_index == at_y:
+                        net += max(0.0, amt)
                 if net > balance:
                     balance = 0.0
                     balances[m] = 0.0
@@ -85,6 +118,9 @@ def simulate_historical(
     annual_contrib: float = 0.0,
     income_amount: float = 0.0,
     income_start_year: int = 0,
+    other_incomes: Optional[List[Dict]] = None,
+    one_time_expenses: Optional[List[Dict]] = None,
+    assets: Optional[List[Dict]] = None,
 ) -> Dict:
     months = (start_delay_years + years) * 12
     r = returns.values.astype(float)
@@ -102,6 +138,9 @@ def simulate_historical(
             annual_contrib,
             income_amount,
             income_start_year,
+            other_incomes,
+            one_time_expenses,
+            assets,
         )
         windows.append(balances)
         endings.append(final_bal)
@@ -143,6 +182,9 @@ def simulate_monte_carlo(
     annual_contrib: float = 0.0,
     income_amount: float = 0.0,
     income_start_year: int = 0,
+    other_incomes: Optional[List[Dict]] = None,
+    one_time_expenses: Optional[List[Dict]] = None,
+    assets: Optional[List[Dict]] = None,
 ) -> Dict:
     months = (start_delay_years + years) * 12
     base = historical_returns.values.astype(float)
@@ -160,6 +202,9 @@ def simulate_monte_carlo(
             annual_contrib,
             income_amount,
             income_start_year,
+            other_incomes,
+            one_time_expenses,
+            assets,
         )
         windows.append(balances)
         endings.append(final_bal)

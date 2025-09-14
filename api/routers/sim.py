@@ -38,6 +38,9 @@ def simulate_historical_api(req: SimRequest) -> Dict[str, Any]:
         annual_contrib=req.annual_contrib,
         income_amount=req.income_amount,
         income_start_year=req.income_start_year,
+        other_incomes=req.other_incomes,
+        one_time_expenses=req.one_time_expenses,
+        assets=req.assets,
     )
 
 
@@ -62,4 +65,7 @@ def simulate_montecarlo_api(req: MCRequest) -> Dict[str, Any]:
         annual_contrib=req.annual_contrib,
         income_amount=req.income_amount,
         income_start_year=req.income_start_year,
+        other_incomes=req.other_incomes,
+        one_time_expenses=req.one_time_expenses,
+        assets=req.assets,
     )

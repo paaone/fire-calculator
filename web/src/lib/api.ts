@@ -8,6 +8,15 @@ export interface SimRequest {
   spend: number
   years: number
   strategy: Strategy
+  // Planning
+  start_delay_years?: number
+  annual_contrib?: number
+  income_amount?: number
+  income_start_year?: number
+  // Extended inputs
+  other_incomes?: { amount: number; start_year: number }[]
+  one_time_expenses?: { amount: number; at_year_from_now: number }[]
+  assets?: { name?: string; amount: number }[]
 }
 
 export interface SimResult {

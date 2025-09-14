@@ -35,6 +35,12 @@ class SimRequest(BaseModel):
     annual_contrib: float = Field(0, ge=0, description="Annual savings contributed each year until retirement starts")
     income_amount: float = Field(0, ge=0, description="Annual recurring income (SS/pension) during retirement")
     income_start_year: int = Field(0, ge=0, le=60, description="Year in retirement when income starts (0 = first year)")
+    # Multiple incomes: annual real amount starting in a given retirement year (0 = first retirement year)
+    other_incomes: list[dict] = Field(default_factory=list, description="[{amount, start_year}]")
+    # One-time expenses at a year offset from now (simulation start)
+    one_time_expenses: list[dict] = Field(default_factory=list, description="[{amount, at_year_from_now}]")
+    # Assets to sum into initial balance
+    assets: list[dict] = Field(default_factory=list, description="[{name?, amount}]")
 
 
 class MCRequest(SimRequest):

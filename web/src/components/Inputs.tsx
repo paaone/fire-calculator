@@ -1,5 +1,6 @@
 import InfoTip from './InfoTip'
 import Accordion from './Accordion'
+import CurrencyInput from './CurrencyInput'
 
 export type StrategyName = 'fixed' | 'variable_percentage' | 'guardrails'
 
@@ -17,20 +18,34 @@ export default function Inputs(props: {
   incomeStartYear: number; onIncomeStartYear: (v: number) => void
   stillWorking: boolean; onStillWorking: (v: boolean) => void
   expectedRealReturn: number; onExpectedRealReturn: (v: number) => void
+  onApplyPreset?: (name: 'lean' | 'baseline' | 'fat') => void
+  // Lists
+  assets?: { name?: string; amount: number }[]; onAssetsChange?: (rows: { name?: string; amount: number }[]) => void
+  otherIncomes?: { amount: number; start_year: number }[]; onOtherIncomesChange?: (rows: { amount: number; start_year: number }[]) => void
+  expenses?: { amount: number; at_year_from_now: number }[]; onExpensesChange?: (rows: { amount: number; at_year_from_now: number }[]) => void
   onRun: () => void; running: boolean
 }) {
-  const { initial, onInitial, spend, onSpend, years, onYears, strategy, onStrategy, vpwPct, onVpwPct, guardBand, onGuardBand, guardStep, onGuardStep, startDelayYears, onStartDelay, annualContrib, onAnnualContrib, incomeAmount, onIncomeAmount, incomeStartYear, onIncomeStartYear, stillWorking, onStillWorking, expectedRealReturn, onExpectedRealReturn, onRun, running } = props
+  const { initial, onInitial, spend, onSpend, years, onYears, strategy, onStrategy, vpwPct, onVpwPct, guardBand, onGuardBand, guardStep, onGuardStep, startDelayYears, onStartDelay, annualContrib, onAnnualContrib, incomeAmount, onIncomeAmount, incomeStartYear, onIncomeStartYear, stillWorking, onStillWorking, expectedRealReturn, onExpectedRealReturn, onApplyPreset, assets = [], onAssetsChange, otherIncomes = [], onOtherIncomesChange, expenses = [], onExpensesChange, onRun, running } = props
   return (
     <div className="panel vstack">
       <div>
         <h3 className="title">Your FIRE Journey</h3>
         <div className="subtitle">Start with where you are. We’ll estimate when you can retire, then test how robust that plan is across history.</div>
       </div>
+
+      {onApplyPreset && (
+        <div className="hstack" style={{ gap: 8, flexWrap: 'wrap' }}>
+          <span className="label" style={{ letterSpacing: 0 }}>Presets:</span>
+          <button type="button" className="btn" style={{ padding: '6px 10px' }} onClick={() => onApplyPreset('lean')}>Lean</button>
+          <button type="button" className="btn" style={{ padding: '6px 10px', background: 'linear-gradient(180deg,#1e88e5,#1d4ed8)' }} onClick={() => onApplyPreset('baseline')}>Baseline</button>
+          <button type="button" className="btn" style={{ padding: '6px 10px', background: 'linear-gradient(180deg,#16a34a,#15803d)' }} onClick={() => onApplyPreset('fat')}>Fat</button>
+        </div>
+      )}
       <label className="label">Initial Portfolio <InfoTip title="Initial portfolio">Starting portfolio in today's dollars. FireCalc and this tool use historical real (inflation-adjusted) returns, so inputs are in today's purchasing power.</InfoTip></label>
-      <input className="input" type="number" value={initial} onChange={(e) => onInitial(Number(e.target.value))} min={0} step={1000} />
+      <CurrencyInput value={initial} onChange={onInitial} />
 
       <label className="label">Annual Spending <InfoTip title="Annual spending (real)">Amount you plan to spend per year, in today's dollars. With real returns, a fixed withdrawal means purchasing power stays constant.</InfoTip></label>
-      <input className="input" type="number" value={spend} onChange={(e) => onSpend(Number(e.target.value))} min={0} step={500} />
+      <CurrencyInput value={spend} onChange={onSpend} />
 
       <div className="row">
         <div>
@@ -51,7 +66,7 @@ export default function Inputs(props: {
           <div className="row">
             <div>
               <label className="label">Annual savings (real) <InfoTip title="Annual contributions">Amount added to the portfolio each year until retirement.</InfoTip></label>
-              <input className="input" type="number" value={annualContrib} onChange={(e) => onAnnualContrib(Number(e.target.value))} min={0} step={1000} />
+              <CurrencyInput value={annualContrib} onChange={onAnnualContrib} />
             </div>
             <div>
               <label className="label">Expected real return (pre‑retirement) <InfoTip title="Real growth">Average annual real growth while working (for the FI estimate). A typical range is 3%–6%.</InfoTip></label>
@@ -74,6 +89,13 @@ export default function Inputs(props: {
               <option value="variable_percentage">Variable percentage (VPW)</option>
               <option value="guardrails">Guardrails (Guyton–Klinger‑style)</option>
             </select>
+          </div>
+
+          <div className="help">
+            Example: If you have $1,000,000 and plan to spend $40,000, the initial withdrawal rate is 4%.
+            - Fixed keeps $40,000 per year in today’s dollars (real) regardless of market swings.
+            - VPW withdraws a percentage of the current balance each year (e.g., 4%), so income rises or falls with markets.
+            - Guardrails adjusts spending up or down if your withdrawal rate drifts outside ±band around the initial 4%.
           </div>
 
           {strategy === 'variable_percentage' && (
@@ -99,17 +121,81 @@ export default function Inputs(props: {
       </Accordion>
 
       <Accordion title="Other income (Social Security, pensions)">
-        <div className="row">
-          <div>
-            <label className="label">Annual income (real) <InfoTip title="Recurring income">Amount received each year in retirement. The portfolio withdraws only what income does not cover.</InfoTip></label>
-            <input className="input" type="number" value={incomeAmount} onChange={(e) => onIncomeAmount(Number(e.target.value))} min={0} step={500} />
+        <div className="vstack">
+          <div className="row">
+            <div>
+              <label className="label">Annual income (real) <InfoTip title="Recurring income">Amount received each year in retirement. The portfolio withdraws only what income does not cover.</InfoTip></label>
+              <CurrencyInput value={incomeAmount} onChange={onIncomeAmount} />
+            </div>
+            <div>
+              <label className="label">Starts in retirement year</label>
+              <input className="input" type="number" value={incomeStartYear} onChange={(e) => onIncomeStartYear(Number(e.target.value))} min={0} max={60} step={1} />
+            </div>
           </div>
-          <div>
-            <label className="label">Starts in year <InfoTip title="Start year">First retirement year this income begins (0 = first year of retirement).</InfoTip></label>
-            <input className="input" type="number" value={incomeStartYear} onChange={(e) => onIncomeStartYear(Number(e.target.value))} min={0} max={60} step={1} />
-          </div>
+          {onOtherIncomesChange && (
+            <div className="vstack">
+              <div className="label">Add other income lines</div>
+              {otherIncomes.map((row, idx) => (
+                <div className="row" key={idx}>
+                  <CurrencyInput value={row.amount} onChange={(v) => {
+                    const next = otherIncomes.slice(); next[idx] = { ...row, amount: v }; onOtherIncomesChange(next)
+                  }} />
+                  <input className="input" type="number" min={0} max={60} step={1} value={row.start_year} onChange={(e) => {
+                    const next = otherIncomes.slice(); next[idx] = { ...row, start_year: Number(e.target.value) }; onOtherIncomesChange(next)
+                  }} />
+                  <button className="btn" type="button" onClick={() => {
+                    const next = otherIncomes.filter((_, i) => i !== idx); onOtherIncomesChange(next)
+                  }}>Remove</button>
+                </div>
+              ))}
+              <button className="btn" type="button" onClick={() => onOtherIncomesChange([...(otherIncomes||[]), { amount: 0, start_year: 0 }])}>Add another income</button>
+            </div>
+          )}
         </div>
       </Accordion>
+
+      {onExpensesChange && (
+        <Accordion title="One‑time expenses (years from now)">
+          <div className="vstack">
+            <div className="help">Model big purchases like a house or education. These apply in the end of the specified year from now.</div>
+            {expenses.map((row, idx) => (
+              <div className="row" key={idx}>
+                <CurrencyInput value={row.amount} onChange={(v) => {
+                  const next = expenses.slice(); next[idx] = { ...row, amount: v }; onExpensesChange(next)
+                }} />
+                <input className="input" type="number" min={0} max={60} step={1} value={row.at_year_from_now} onChange={(e) => {
+                  const next = expenses.slice(); next[idx] = { ...row, at_year_from_now: Number(e.target.value) }; onExpensesChange(next)
+                }} />
+                <button className="btn" type="button" onClick={() => {
+                  const next = expenses.filter((_, i) => i !== idx); onExpensesChange(next)
+                }}>Remove</button>
+              </div>
+            ))}
+            <button className="btn" type="button" onClick={() => onExpensesChange([...(expenses||[]), { amount: 0, at_year_from_now: 1 }])}>Add one‑time expense</button>
+          </div>
+        </Accordion>
+      )}
+
+      {onAssetsChange && (
+        <Accordion title="Assets (sum to initial portfolio)">
+          <div className="vstack">
+            {assets.map((row, idx) => (
+              <div className="row" key={idx}>
+                <input className="input" type="text" placeholder="Name (optional)" value={row.name || ''} onChange={(e) => {
+                  const next = assets.slice(); next[idx] = { ...row, name: e.target.value }; onAssetsChange(next)
+                }} />
+                <CurrencyInput value={row.amount} onChange={(v) => {
+                  const next = assets.slice(); next[idx] = { ...row, amount: v }; onAssetsChange(next)
+                }} />
+                <button className="btn" type="button" onClick={() => {
+                  const next = assets.filter((_, i) => i !== idx); onAssetsChange(next)
+                }}>Remove</button>
+              </div>
+            ))}
+            <button className="btn" type="button" onClick={() => onAssetsChange([...(assets||[]), { name: '', amount: 0 }])}>Add asset</button>
+          </div>
+        </Accordion>
+      )}
 
       <div className="divider" />
 
