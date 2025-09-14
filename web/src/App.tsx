@@ -33,6 +33,8 @@ export default function App() {
   const [expenses, setExpenses] = useState<{ amount: number; at_year_from_now: number }[]>([])
   const [nPaths, setNPaths] = useState(1000)
   const [blockSize, setBlockSize] = useState(12)
+  const [inflationPct, setInflationPct] = useState(3)
+  const [valueUnits, setValueUnits] = useState<'real' | 'nominal'>('real')
 
   const strategy: Strategy = useMemo(() => {
     if (strategyName === 'variable_percentage') return { type: 'variable_percentage', percentage: vpwPct / 100 }
@@ -76,6 +78,18 @@ export default function App() {
       p90: res.quantiles.p90[i],
       band: res.quantiles.p90[i] - res.quantiles.p10[i],
     }))
+
+  const unitLabel = valueUnits === 'real' ? 'real $' : 'nominal $'
+  const toSeriesWithUnits = (res: any): SeriesPoint[] => {
+    const base = toSeries(res)
+    if (valueUnits === 'real') return base
+    const r = 1 + inflationPct / 100
+    return base.map((p, idx) => {
+      const tYears = (idx + 1) / 12
+      const f = Math.pow(r, tYears)
+      return { ...p, p10: p.p10 * f, band: p.band * f }
+    })
+  }
 
   // Auto-estimate years to FIRE when working
   const fireTarget = fireTargetFromSpend(spend, 0.04)
@@ -223,6 +237,22 @@ export default function App() {
             </div>
           </div>
 
+          <div className="panel">
+            <div className="hstack" style={{ gap: 12, flexWrap: 'wrap' }}>
+              <div className="label">Display:</div>
+              <div className="switch">
+                <button type="button" className={valueUnits === 'real' ? 'active' : ''} onClick={() => setValueUnits('real')}>Real $</button>
+                <button type="button" className={valueUnits === 'nominal' ? 'active' : ''} onClick={() => setValueUnits('nominal')}>Nominal $</button>
+              </div>
+              {valueUnits === 'nominal' && (
+                <div className="hstack" style={{ gap: 6 }}>
+                  <label className="label" style={{ alignSelf: 'center' }}>Inflation %</label>
+                  <input className="input" style={{ width: 90 }} type="number" min={0} max={15} step={0.1} value={inflationPct} onChange={(e) => setInflationPct(Number(e.target.value))} />
+                </div>
+              )}
+            </div>
+          </div>
+
           <Accordion title="Advanced (Monte Carlo)" defaultOpen={false}>
             <div className="row">
               <div>
@@ -239,9 +269,9 @@ export default function App() {
           {hist && hist.success_rate >= 80 && (
             <>
               <div className="callout"><div className="hstack" style={{ gap: 8 }}><FaCircleCheck color="#16a34a" /><strong>You’re FI‑ready based on history.</strong> Success rate is at least 80%. Explore the range below.</div></div>
-              <ProjectionChart data={toSeries(hist)} title="Historical projection (real $)" retireAtMonths={startDelayYears * 12} />
-              <ProjectionChart data={toSeries(mc)} title="Monte Carlo projection (real $)" retireAtMonths={startDelayYears * 12} />
-              <Histogram values={hist.ending_balances} title="Historical ending balances" />
+              <ProjectionChart data={toSeriesWithUnits(hist)} title={`Historical projection (${unitLabel})`} retireAtMonths={startDelayYears * 12} />
+              <ProjectionChart data={toSeriesWithUnits(mc)} title={`Monte Carlo projection (${unitLabel})`} retireAtMonths={startDelayYears * 12} />
+              <Histogram values={(valueUnits === 'nominal') ? hist.ending_balances.map(v => v * Math.pow(1 + inflationPct / 100, years)) : hist.ending_balances} title={`Historical ending balances (${unitLabel})`} />
             </>
           )}
           {hist && hist.success_rate < 80 && (

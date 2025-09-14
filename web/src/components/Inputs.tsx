@@ -148,7 +148,7 @@ export default function Inputs(props: {
                   }}>Remove</button>
                 </div>
               ))}
-              <button className="btn" type="button" onClick={() => onOtherIncomesChange([...(otherIncomes||[]), { amount: 0, start_year: 0 }])}>Add another income</button>
+              <button className="btn btn-secondary btn-sm" type="button" onClick={() => onOtherIncomesChange([...(otherIncomes||[]), { amount: 0, start_year: 0 }])}>Add another income</button>
             </div>
           )}
         </div>
@@ -192,7 +192,7 @@ export default function Inputs(props: {
                 }}>Remove</button>
               </div>
             ))}
-            <button className="btn" type="button" onClick={() => onAssetsChange([...(assets||[]), { name: '', amount: 0 }])}>Add asset</button>
+            <button className="btn btn-secondary btn-sm" type="button" onClick={() => onAssetsChange([...(assets||[]), { name: '', amount: 0 }])}>Add asset</button>
           </div>
         </Accordion>
       )}

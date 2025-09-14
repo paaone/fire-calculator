@@ -25,6 +25,12 @@ a{color:var(--accent-2)}
 .btn-lg{padding:12px 18px; font-size:15px}
 .btn-sm{padding:6px 10px; font-size:12px}
 .btn-secondary{background:#eef2f7;color:#0f172a;border:1px solid var(--border)}
+
+/* Emphasize the main Run button in the Inputs panel */
+.panel.vstack > button.btn{background:linear-gradient(180deg,#24c356,#199a3b); box-shadow:0 4px 12px rgba(16,185,129,.25); font-weight:600; padding:12px 18px}
+
+/* Make Add buttons in accordions smaller and right-aligned */
+.accordion .vstack > button.btn{background:#eef2f7;color:#0f172a;border:1px solid var(--border); padding:6px 10px; font-size:12px; align-self:flex-end}
 .help{color:var(--muted);font-size:12px}
 .title{margin:0 0 4px;font-size:22px}
 .subtitle{margin:0 0 12px;color:var(--muted)}
