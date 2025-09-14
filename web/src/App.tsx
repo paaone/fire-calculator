@@ -4,6 +4,7 @@ import ProjectionChart, { SeriesPoint } from './components/ProjectionChart'
 import Histogram from './components/Histogram'
 import Inputs, { StrategyName } from './components/Inputs'
 import { fetchHistorical, fetchMonteCarlo, SimRequest, Strategy } from './lib/api'
+import { computeYearsToFI, fireTargetFromSpend } from './lib/journey'
 
 function currency(n: number) {
   return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n)
@@ -21,6 +22,8 @@ export default function App() {
   const [annualContrib, setAnnualContrib] = useState(0)
   const [incomeAmount, setIncomeAmount] = useState(0)
   const [incomeStartYear, setIncomeStartYear] = useState(0)
+  const [stillWorking, setStillWorking] = useState(true)
+  const [expectedRealReturn, setExpectedRealReturn] = useState(5)
 
   const strategy: Strategy = useMemo(() => {
     if (strategyName === 'variable_percentage') return { type: 'variable_percentage', percentage: vpwPct / 100 }
@@ -50,14 +53,23 @@ export default function App() {
   const hist = histQuery.data
   const mc = mcQuery.data
 
+  const baseYear = new Date().getFullYear()
   const toSeries = (res: any): SeriesPoint[] =>
-    (res?.quantiles?.p50 || []).map((_: number, i: number) => ({
+    (res?.quantiles?.p90 || []).map((_: number, i: number) => ({
       month: i + 1,
+      year: baseYear + Math.floor(i / 12),
       p10: res.quantiles.p10[i],
-      p50: res.quantiles.p50[i],
       p90: res.quantiles.p90[i],
       band: res.quantiles.p90[i] - res.quantiles.p10[i],
     }))
+
+  // Auto-estimate years to FIRE when working
+  const fireTarget = fireTargetFromSpend(spend, 0.04)
+  const estimatedYearsToFI = computeYearsToFI({ balance: initial, target: fireTarget, annualContrib, realReturnPct: expectedRealReturn })
+  useEffect(() => {
+    if (stillWorking) setStartDelayYears(estimatedYearsToFI)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initial, spend, annualContrib, expectedRealReturn, stillWorking])
 
   return (
     <div className="container">
@@ -90,24 +102,35 @@ export default function App() {
           annualContrib={annualContrib} onAnnualContrib={setAnnualContrib}
           incomeAmount={incomeAmount} onIncomeAmount={setIncomeAmount}
           incomeStartYear={incomeStartYear} onIncomeStartYear={setIncomeStartYear}
+          stillWorking={stillWorking} onStillWorking={setStillWorking}
+          expectedRealReturn={expectedRealReturn} onExpectedRealReturn={setExpectedRealReturn}
           onRun={() => { histQuery.refetch(); mcQuery.refetch() }} running={loading}
         />
 
         <div className="grid" style={{ alignContent: 'start' }}>
           {error && <div className="panel" style={{ borderColor: '#7f1d1d', color: '#fecaca' }}>Error: {(error as any)?.message || String(error)}</div>}
-          {hist && (
-            <div className="panel">
-              <div className="hstack" style={{ gap: 16 }}>
-                <div>Historical success: <strong className="success">{hist.success_rate.toFixed(1)}%</strong></div>
-                {mc && <div>Monte Carlo success: <strong className="success">{mc.success_rate.toFixed(1)}%</strong></div>}
-                <div className="help">Median ending (hist): {currency(median(hist.ending_balances))}</div>
-              </div>
+          <div className="panel">
+            <div className="hstack" style={{ gap: 16, flexWrap: 'wrap' }}>
+              <div><strong>FIRE target (25×):</strong> {currency(fireTarget)}</div>
+              {stillWorking && <div><strong>Estimated FI year:</strong> {baseYear + estimatedYearsToFI}</div>}
+              {hist && <div>Historical success: <strong className="success">{hist.success_rate.toFixed(1)}%</strong></div>}
+              {mc && <div>Monte Carlo success: <strong className="success">{mc.success_rate.toFixed(1)}%</strong></div>}
+              <div className="help">Charts show inflation‑adjusted dollars by calendar year. Range is P10–P90 across scenarios.</div>
+            </div>
+          </div>
+
+          {hist && hist.success_rate >= 80 && (
+            <>
+              <ProjectionChart data={toSeries(hist)} title="Historical projection" retireAtMonths={startDelayYears * 12} />
+              <ProjectionChart data={toSeries(mc)} title="Monte Carlo projection" retireAtMonths={startDelayYears * 12} />
+              <Histogram values={hist.ending_balances} title="Historical ending balances" />
+            </>
+          )}
+          {hist && hist.success_rate < 80 && (
+            <div className="panel" style={{ borderColor: '#fde68a', background: '#fffbeb' }}>
+              <div><strong>Not quite there yet.</strong> Success rate is below 80%. Consider lowering spending, saving more, or delaying retirement. Use the inputs to explore trade‑offs.</div>
             </div>
           )}
-
-          {hist && <ProjectionChart data={toSeries(hist)} title="Historical projection" retireAtMonths={startDelayYears * 12} />}
-          {mc && <ProjectionChart data={toSeries(mc)} title="Monte Carlo projection" retireAtMonths={startDelayYears * 12} />}
-          {hist && <Histogram values={hist.ending_balances} title="Historical ending balances" />}
         </div>
       </div>
     </div>
