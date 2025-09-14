@@ -5,6 +5,8 @@ import Histogram from './components/Histogram'
 import Inputs, { StrategyName } from './components/Inputs'
 import { fetchHistorical, fetchMonteCarlo, SimRequest, Strategy } from './lib/api'
 import { computeYearsToFI, fireTargetFromSpend } from './lib/journey'
+import Accordion from './components/Accordion'
+import { FaCircleCheck, FaCircleExclamation } from 'react-icons/fa6'
 
 function currency(n: number) {
   return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n)
@@ -81,13 +83,17 @@ export default function App() {
         <span className="badge">beta</span>
       </div>
 
-      <div className="panel" style={{ marginBottom: 16 }}>
-        <div className="hstack" style={{ gap: 12, flexWrap: 'wrap' }}>
-          <div><strong>Your question:</strong> Can you retire and maintain your lifestyle with what you have?</div>
-          <div className="help">Averages hide sequence risk. 1973 vs. 1975 can be worlds apart.</div>
+      <Accordion title="New to FIRE? Start here (click to expand)" defaultOpen={false}>
+        <div className="vstack">
+          <div><strong>The big question:</strong> With what you have today and what it costs to live, can you retire and keep the same lifestyle?</div>
+          <div>Average returns hide <em>sequence risk</em>. Two people who retire a year apart can have very different outcomes. So we test your plan against <strong>every historical start year (since 1947)</strong> and show how often it worked, plus a Monte Carlo view.</div>
+          <div className="hstack" style={{ gap: 12, flexWrap: 'wrap' }}>
+            <div><strong>How to use:</strong> Enter portfolio and spending. If still working, add savings and expected real growth to estimate your FIRE year. Add other income (Social Security/pension) if relevant. Then review success rates and ranges.</div>
+          </div>
+          <div><strong>Rule of thumb (4%):</strong> A starting target is <strong>25× spending</strong>. This app estimates when you’ll reach that, then stress‑tests the plan against history.</div>
+          <div className="help">All inputs and results are in today’s dollars (inflation‑adjusted).</div>
         </div>
-        <div className="help" style={{ marginTop: 6 }}>This tool runs your plan through every historical sequence (plus Monte Carlo) to show success rate and likely ranges. Add Social Security/pensions, or delay retirement and keep saving.</div>
-      </div>
+      </Accordion>
 
       <div className="grid grid-2">
         <Inputs
@@ -111,25 +117,23 @@ export default function App() {
           {error && <div className="panel" style={{ borderColor: '#7f1d1d', color: '#fecaca' }}>Error: {(error as any)?.message || String(error)}</div>}
           <div className="panel">
             <div className="hstack" style={{ gap: 16, flexWrap: 'wrap' }}>
-              <div><strong>FIRE target (25×):</strong> {currency(fireTarget)}</div>
-              {stillWorking && <div><strong>Estimated FI year:</strong> {baseYear + estimatedYearsToFI}</div>}
-              {hist && <div>Historical success: <strong className="success">{hist.success_rate.toFixed(1)}%</strong></div>}
-              {mc && <div>Monte Carlo success: <strong className="success">{mc.success_rate.toFixed(1)}%</strong></div>}
-              <div className="help">Charts show inflation‑adjusted dollars by calendar year. Range is P10–P90 across scenarios.</div>
+              <div className="badge">FIRE target (25×): {currency(fireTarget)}</div>
+              {stillWorking && <div className="badge" style={{ background: '#dbeafe', borderColor: '#bfdbfe', color: '#1e3a8a' }}>Estimated FI year: {baseYear + estimatedYearsToFI}</div>}
+              {hist && <div className="badge" style={{ background: '#ecfdf5', borderColor: '#bbf7d0', color: '#065f46' }}>Historical success: {hist.success_rate.toFixed(1)}%</div>}
+              {mc && <div className="badge" style={{ background: '#ecfdf5', borderColor: '#bbf7d0', color: '#065f46' }}>Monte Carlo success: {mc.success_rate.toFixed(1)}%</div>}
             </div>
           </div>
 
           {hist && hist.success_rate >= 80 && (
             <>
-              <ProjectionChart data={toSeries(hist)} title="Historical projection" retireAtMonths={startDelayYears * 12} />
-              <ProjectionChart data={toSeries(mc)} title="Monte Carlo projection" retireAtMonths={startDelayYears * 12} />
+              <div className="callout"><div className="hstack" style={{ gap: 8 }}><FaCircleCheck color="#16a34a" /><strong>You’re FI‑ready based on history.</strong> Success rate is at least 80%. Explore the range below.</div></div>
+              <ProjectionChart data={toSeries(hist)} title="Historical projection (real $)" retireAtMonths={startDelayYears * 12} />
+              <ProjectionChart data={toSeries(mc)} title="Monte Carlo projection (real $)" retireAtMonths={startDelayYears * 12} />
               <Histogram values={hist.ending_balances} title="Historical ending balances" />
             </>
           )}
           {hist && hist.success_rate < 80 && (
-            <div className="panel" style={{ borderColor: '#fde68a', background: '#fffbeb' }}>
-              <div><strong>Not quite there yet.</strong> Success rate is below 80%. Consider lowering spending, saving more, or delaying retirement. Use the inputs to explore trade‑offs.</div>
-            </div>
+            <div className="callout-warn"><div className="hstack" style={{ gap: 8 }}><FaCircleExclamation color="#b45309" /><strong>Not quite there yet.</strong> Success is below 80%. Try lowering spending, saving more, or delaying retirement and rerun.</div></div>
           )}
         </div>
       </div>

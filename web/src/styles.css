@@ -38,3 +38,15 @@ a{color:var(--accent-2)}
 .tooltip .bubble{visibility:hidden;opacity:0;position:absolute;z-index:20;top:100%;left:0;transform:translateY(6px);background:#ffffff;border:1px solid var(--border);border-radius:8px;padding:10px;width:300px;color:#334155;box-shadow:0 8px 24px rgba(15,23,42,.08);transition:opacity .12s ease}
 .tooltip:hover .bubble{visibility:visible;opacity:1}
 @media (max-width: 980px){.grid-2{grid-template-columns:1fr}}
+
+/* Accordion */
+.accordion{border:1px solid var(--border);border-radius:10px;background:#fff}
+.accordion + .accordion{margin-top:10px}
+.accordion-header{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;background:#f3f4f6;border:none;border-radius:10px;color:#0f172a;cursor:pointer}
+.accordion-header:hover{background:#e9eef6}
+.accordion-header .rotate{transform:rotate(180deg);transition:transform .15s ease}
+.accordion-content{padding:12px}
+
+/* Emphasis callouts */
+.callout{border:1px solid #bbf7d0;background:#ecfdf5;color:#065f46;border-radius:12px;padding:12px}
+.callout-warn{border:1px solid #fde68a;background:#fffbeb;color:#7c2d12;border-radius:12px;padding:12px}

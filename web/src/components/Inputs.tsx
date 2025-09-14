@@ -1,4 +1,5 @@
 import InfoTip from './InfoTip'
+import Accordion from './Accordion'
 
 export type StrategyName = 'fixed' | 'variable_percentage' | 'guardrails'
 
@@ -64,45 +65,40 @@ export default function Inputs(props: {
         </>
       )}
 
-      <div className="row">
-        <div>
-          <label className="label">Years <InfoTip title="Retirement length">How long the plan needs to last. FireCalc tests each historical window with this length to compute success rates.</InfoTip></label>
-          <input className="input" type="number" value={years} onChange={(e) => onYears(Number(e.target.value))} min={1} max={60} step={1} />
-        </div>
-        <div>
-          <label className="label">Strategy <InfoTip title="Withdrawal strategy">Choose a rule for withdrawals: Fixed real dollars, Variable % of portfolio (VPW), or Guardrails which adjust spending if withdrawal rate drifts too high/low.</InfoTip></label>
-          <select className="select" value={strategy} onChange={(e) => onStrategy(e.target.value as StrategyName)}>
-            <option value="fixed">Fixed (real dollars)</option>
-            <option value="variable_percentage">Variable percentage (VPW)</option>
-            <option value="guardrails">Guardrails (Guyton–Klinger-style)</option>
-          </select>
-        </div>
-      </div>
-
-      {strategy === 'variable_percentage' && (
-        <div>
-          <label className="label">Variable % of balance <InfoTip title="VPW">Withdraw a percentage of the current balance each year. 4%–5% is common; income varies with markets.</InfoTip></label>
-          <input className="input" type="number" value={vpwPct} onChange={(e) => onVpwPct(Number(e.target.value))} min={1} max={10} step={0.25} />
-        </div>
-      )}
-
-      {strategy === 'guardrails' && (
-        <div className="row">
+      <Accordion title="Withdrawal strategy">
+        <div className="vstack">
           <div>
-            <label className="label">Guard band (±%) <InfoTip title="Guard band">How far the withdrawal rate can drift from the initial withdrawal rate before adjusting spending.</InfoTip></label>
-            <input className="input" type="number" value={guardBand} onChange={(e) => onGuardBand(Number(e.target.value))} min={5} max={50} step={1} />
+            <label className="label">Strategy <InfoTip title="Withdrawal strategy">Choose a rule for withdrawals: Fixed real dollars, Variable % (VPW), or Guardrails which adjust spending if your withdrawal rate drifts too high/low.</InfoTip></label>
+            <select className="select" value={strategy} onChange={(e) => onStrategy(e.target.value as StrategyName)}>
+              <option value="fixed">Fixed (real dollars)</option>
+              <option value="variable_percentage">Variable percentage (VPW)</option>
+              <option value="guardrails">Guardrails (Guyton–Klinger‑style)</option>
+            </select>
           </div>
-          <div>
-            <label className="label">Adjust step (±%) <InfoTip title="Adjust step">How much to raise or lower the annual spending when outside the guard band.</InfoTip></label>
-            <input className="input" type="number" value={guardStep} onChange={(e) => onGuardStep(Number(e.target.value))} min={2} max={25} step={1} />
-          </div>
-        </div>
-      )}
 
-      <div className="divider" />
-      <div>
-        <h3 className="title" style={{ fontSize: 18 }}>Other Income</h3>
-        <div className="subtitle">Use Social Security, pensions, or other recurring income to offset withdrawals.</div>
+          {strategy === 'variable_percentage' && (
+            <div>
+              <label className="label">Variable % of balance <InfoTip title="VPW">Withdraw a percentage of the current balance each year. 4%–5% is common; income varies with markets.</InfoTip></label>
+              <input className="input" type="number" value={vpwPct} onChange={(e) => onVpwPct(Number(e.target.value))} min={1} max={10} step={0.25} />
+            </div>
+          )}
+
+          {strategy === 'guardrails' && (
+            <div className="row">
+              <div>
+                <label className="label">Guard band (±%) <InfoTip title="Guard band">How far the withdrawal rate can drift from the initial withdrawal rate before adjusting spending.</InfoTip></label>
+                <input className="input" type="number" value={guardBand} onChange={(e) => onGuardBand(Number(e.target.value))} min={5} max={50} step={1} />
+              </div>
+              <div>
+                <label className="label">Adjust step (±%) <InfoTip title="Adjust step">How much to raise or lower the annual spending when outside the guard band.</InfoTip></label>
+                <input className="input" type="number" value={guardStep} onChange={(e) => onGuardStep(Number(e.target.value))} min={2} max={25} step={1} />
+              </div>
+            </div>
+          )}
+        </div>
+      </Accordion>
+
+      <Accordion title="Other income (Social Security, pensions)">
         <div className="row">
           <div>
             <label className="label">Annual income (real) <InfoTip title="Recurring income">Amount received each year in retirement. The portfolio withdraws only what income does not cover.</InfoTip></label>
@@ -113,7 +109,7 @@ export default function Inputs(props: {
             <input className="input" type="number" value={incomeStartYear} onChange={(e) => onIncomeStartYear(Number(e.target.value))} min={0} max={60} step={1} />
           </div>
         </div>
-      </div>
+      </Accordion>
 
       <div className="divider" />
 
