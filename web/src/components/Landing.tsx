@@ -77,9 +77,6 @@ export default function Landing(props: {
             onRun={p.onSimulate}
             running={p.running}
           />
-          <div>
-            <button className="btn" onClick={p.onSimulate} disabled={p.running}>Simulate</button>
-          </div>
         </section>
       </div>
     </div>
