@@ -16,20 +16,20 @@ export default function ProjectionChart({ data, title, retireAtMonths }: { data:
         <AreaChart data={data} margin={{ left: 8, right: 8, top: 10, bottom: 0 }}>
           <defs>
             <linearGradient id="colorBand" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#a7f3d0" stopOpacity={0.6} />
-              <stop offset="95%" stopColor="#bfdbfe" stopOpacity={0.2} />
+              <stop offset="5%" stopColor="#93c5fd" stopOpacity={0.6} />
+              <stop offset="95%" stopColor="#bae6fd" stopOpacity={0.2} />
             </linearGradient>
           </defs>
-          <CartesianGrid strokeDasharray="3 3" />
+          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
           <XAxis dataKey="year" ticks={yearTicks(data)} />
           <YAxis tickFormatter={currency} width={90} domain={[0, (dataMax: number) => dataMax * 1.05]} />
-          <Tooltip content={<CustomTooltip />} />
+          <Tooltip content={<TooltipContent />} />
           {retireAtMonths && retireAtMonths > 0 && (
-            <ReferenceLine x={data[0]?.year + Math.floor(retireAtMonths / 12)} stroke="#94a3b8" strokeDasharray="4 3" label={{ value: 'Retire', position: 'insideTop', fill: '#64748b' }} />
+            <ReferenceLine x={data[0]?.year + Math.floor(retireAtMonths / 12)} stroke="#94a3b8" strokeWidth={2} strokeDasharray="4 3" label={{ value: 'Retire', position: 'insideTop', fill: '#64748b' }} />
           )}
           {/* Confidence band (no legend clutter) */}
-          <Area type="monotone" dataKey="p10" stroke="#93c5fd" fillOpacity={0} dot={false} stackId="band" />
-          <Area type="monotone" dataKey="band" stroke="#1e88e5" fill="url(#colorBand)" dot={false} stackId="band" />
+          <Area type="monotone" dataKey="p10" stroke="#93c5fd" strokeWidth={2.2} fillOpacity={0} dot={false} stackId="band" />
+          <Area type="monotone" dataKey="band" stroke="#1e88e5" strokeWidth={2.2} fill="url(#colorBand)" dot={false} stackId="band" />
           {/* No median line for a cleaner look */}
         </AreaChart>
       </ResponsiveContainer>
@@ -44,6 +44,20 @@ function yearTicks(data: SeriesPoint[]) {
   const ticks: number[] = []
   for (let y = start; y <= end; y++) ticks.push(y)
   return ticks
+}
+
+function TooltipContent({ active, payload, label }: any) {
+  if (!active || !payload?.length) return null
+  const year = Number(label)
+  const p10 = Number(payload.find((p: any) => p.dataKey === 'p10')?.value ?? 0)
+  const band = Number(payload.find((p: any) => p.dataKey === 'band')?.value ?? 0)
+  const p90 = p10 + band
+  return (
+    <div className="panel" style={{ padding: 12 }}>
+      <div className="label" style={{ marginBottom: 4 }}>{year}</div>
+      <div><strong>Range:</strong> {currency(p10)} to {currency(p90)}</div>
+    </div>
+  )
 }
 
 function CustomTooltip({ active, payload, label }: any) {

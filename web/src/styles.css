@@ -3,8 +3,8 @@
   --panel: #ffffff;
   --muted: #6b7280;
   --text: #0f172a;
-  --accent: #2bb24c; /* minty green */
-  --accent-2: #1e88e5; /* fresh blue */
+  --accent: #3b82f6; /* primary blue */
+  --accent-2: #0ea5e9; /* cyan */
   --border: #e5e7eb;
 }
 *{box-sizing:border-box}
@@ -14,20 +14,20 @@ a{color:var(--accent-2)}
 .container{max-width:1200px;margin:0 auto;padding:24px}
 .grid{display:grid;gap:16px}
 .grid-2{grid-template-columns: 400px 1fr}
-.panel{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px;box-shadow:0 1px 2px rgba(16,24,40,.06)}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px;box-shadow:0 2px 8px rgba(16,24,40,.06)}
 .hstack{display:flex;align-items:center;gap:8px}
 .vstack{display:flex;flex-direction:column;gap:10px}
 .label{font-size:12px;text-transform:uppercase;color:var(--muted);letter-spacing:.06em}
 .input, .select {width:100%;padding:10px 12px;border-radius:8px;background:#fff;border:1px solid var(--border);color:var(--text)}
-.btn{background:linear-gradient(180deg,var(--accent),#199a3b);border:none;color:white;padding:10px 14px;border-radius:8px;cursor:pointer}
+.btn{background:linear-gradient(180deg,var(--accent),#2563eb);border:none;color:white;padding:10px 14px;border-radius:8px;cursor:pointer}
 .btn[disabled]{opacity:.7;cursor:not-allowed}
-.btn-primary{background:linear-gradient(180deg,#24c356,#199a3b); box-shadow:0 4px 12px rgba(16,185,129,.25); font-weight:600}
+.btn-primary{background:linear-gradient(180deg,#3b82f6,#2563eb); box-shadow:0 4px 12px rgba(59,130,246,.35); font-weight:600}
 .btn-lg{padding:12px 18px; font-size:15px}
 .btn-sm{padding:6px 10px; font-size:12px}
 .btn-secondary{background:#eef2f7;color:#0f172a;border:1px solid var(--border)}
 
 /* Emphasize the main Run button in the Inputs panel */
-.panel.vstack > button.btn{background:linear-gradient(180deg,#24c356,#199a3b); box-shadow:0 4px 12px rgba(16,185,129,.25); font-weight:600; padding:12px 18px}
+.panel.vstack > button.btn{background:linear-gradient(180deg,#3b82f6,#2563eb); box-shadow:0 4px 12px rgba(59,130,246,.35); font-weight:600; padding:12px 18px}
 
 /* Make Add buttons in accordions smaller and right-aligned */
 .accordion .vstack > button.btn{background:#eef2f7;color:#0f172a;border:1px solid var(--border); padding:6px 10px; font-size:12px; align-self:flex-end}
@@ -60,3 +60,10 @@ a{color:var(--accent-2)}
 /* Emphasis callouts */
 .callout{border:1px solid #bbf7d0;background:#ecfdf5;color:#065f46;border-radius:12px;padding:12px}
 .callout-warn{border:1px solid #fde68a;background:#fffbeb;color:#7c2d12;border-radius:12px;padding:12px}
+
+/* Tables */
+.table-wrap{max-height:320px; overflow:auto}
+.table{width:100%; border-collapse:collapse; font-size:13px}
+.table th, .table td{padding:8px 10px; border-bottom:1px solid var(--border); text-align:right}
+.table th:first-child, .table td:first-child{text-align:left}
+.table thead th{position:sticky; top:0; background:#f8fafc; color:var(--muted); font-weight:600}

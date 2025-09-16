@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import ProjectionChart, { SeriesPoint } from './components/ProjectionChart'
+import CashFlowTable, { CashFlowRow } from './components/CashFlowTable'
 import Histogram from './components/Histogram'
 import Inputs, { StrategyName } from './components/Inputs'
 import { fetchHistorical, fetchMonteCarlo, SimRequest, Strategy } from './lib/api'
@@ -89,6 +90,27 @@ export default function App() {
       const f = Math.pow(r, tYears)
       return { ...p, p10: p.p10 * f, band: p.band * f }
     })
+  }
+
+  function toCashFlowRows(res: any): CashFlowRow[] {
+    if (!res?.quantiles?.p50?.length) return []
+    const months = res.quantiles.p50.length
+    const yearsCount = Math.floor(months / 12)
+    const rows: CashFlowRow[] = []
+    for (let yIdx = 0; yIdx < yearsCount; yIdx++) {
+      const mIdx = (yIdx + 1) * 12 - 1
+      const p10 = Number(res.quantiles.p10[mIdx] ?? 0)
+      const p50 = Number(res.quantiles.p50[mIdx] ?? 0)
+      const p90 = Number(res.quantiles.p90[mIdx] ?? 0)
+      if (valueUnits === 'nominal') {
+        const tYears = (mIdx + 1) / 12
+        const f = Math.pow(1 + inflationPct / 100, tYears)
+        rows.push({ year: baseYear + yIdx, p10: p10 * f, p50: p50 * f, p90: p90 * f })
+      } else {
+        rows.push({ year: baseYear + yIdx, p10, p50, p90 })
+      }
+    }
+    return rows
   }
 
   // Auto-estimate years to FIRE when working
@@ -270,7 +292,9 @@ export default function App() {
             <>
               <div className="callout"><div className="hstack" style={{ gap: 8 }}><FaCircleCheck color="#16a34a" /><strong>You’re FI‑ready based on history.</strong> Success rate is at least 80%. Explore the range below.</div></div>
               <ProjectionChart data={toSeriesWithUnits(hist)} title={`Historical projection (${unitLabel})`} retireAtMonths={startDelayYears * 12} />
+              <CashFlowTable rows={toCashFlowRows(hist)} title={`Historical projection table (${unitLabel})`} />
               <ProjectionChart data={toSeriesWithUnits(mc)} title={`Monte Carlo projection (${unitLabel})`} retireAtMonths={startDelayYears * 12} />
+              <CashFlowTable rows={toCashFlowRows(mc)} title={`Monte Carlo projection table (${unitLabel})`} />
               <Histogram values={(valueUnits === 'nominal') ? hist.ending_balances.map(v => v * Math.pow(1 + inflationPct / 100, years)) : hist.ending_balances} title={`Historical ending balances (${unitLabel})`} />
             </>
           )}

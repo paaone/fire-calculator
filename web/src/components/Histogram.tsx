@@ -28,7 +28,7 @@ export default function Histogram({ values, bins = 30, title }: { values: number
           <XAxis dataKey="x0" tickFormatter={(v) => currency(Number(v))} interval={Math.max(0, Math.floor(bins / 6))} />
           <YAxis />
           <Tooltip formatter={(v: any) => String(v)} labelFormatter={(x0) => currency(Number(x0))} />
-          <Bar dataKey="count" fill="#2bb24c" />
+          <Bar dataKey="count" fill="#3b82f6" />
         </BarChart>
       </ResponsiveContainer>
     </div>
