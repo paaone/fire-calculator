@@ -6,6 +6,15 @@ function currency(n: number) {
   return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n)
 }
 
+function abbrCurrency(n: number) {
+  const abs = Math.abs(n)
+  const trim = (s: string) => s.replace(/\.0$/, '')
+  if (abs >= 1_000_000_000) return `$${trim((n / 1_000_000_000).toFixed(1))}B`
+  if (abs >= 1_000_000) return `$${trim((n / 1_000_000).toFixed(1))}M`
+  if (abs >= 1_000) return `$${Math.round(n / 1_000)}K`
+  return `$${Math.round(n)}`
+}
+
 export default function ProjectionChart({ data, title, retireAtMonths }: { data: SeriesPoint[]; title?: string; retireAtMonths?: number }) {
   return (
     <div className="panel" style={{ width: '100%', height: 380 }}>
@@ -22,7 +31,7 @@ export default function ProjectionChart({ data, title, retireAtMonths }: { data:
           </defs>
           <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
           <XAxis dataKey="year" ticks={yearTicks(data)} />
-          <YAxis tickFormatter={currency} width={90} domain={[0, (dataMax: number) => dataMax * 1.05]} />
+          <YAxis tickFormatter={abbrCurrency} width={68} domain={[0, (dataMax: number) => dataMax * 1.05]} />
           <Tooltip content={<TooltipContent />} />
           {retireAtMonths && retireAtMonths > 0 && (
             <ReferenceLine x={data[0]?.year + Math.floor(retireAtMonths / 12)} stroke="#94a3b8" strokeWidth={2} strokeDasharray="4 3" label={{ value: 'Retire', position: 'insideTop', fill: '#64748b' }} />

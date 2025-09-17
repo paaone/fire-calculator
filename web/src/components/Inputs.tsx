@@ -34,14 +34,7 @@ export default function Inputs(props: {
         <div className="subtitle">Start with where you are. We’ll estimate when you can retire, then test how robust that plan is across history.</div>
       </div>
 
-      {onApplyPreset && (
-        <div className="hstack" style={{ gap: 8, flexWrap: 'wrap' }}>
-          <span className="label" style={{ letterSpacing: 0 }}>Presets:</span>
-          <button type="button" className="btn" style={{ padding: '6px 10px' }} onClick={() => onApplyPreset('lean')}>Lean</button>
-          <button type="button" className="btn" style={{ padding: '6px 10px', background: 'linear-gradient(180deg,#1e88e5,#1d4ed8)' }} onClick={() => onApplyPreset('baseline')}>Baseline</button>
-          <button type="button" className="btn" style={{ padding: '6px 10px', background: 'linear-gradient(180deg,#16a34a,#15803d)' }} onClick={() => onApplyPreset('fat')}>Fat</button>
-        </div>
-      )}
+      {/* Presets removed for a cleaner, minimal UI */}
       <label className="label">Initial Portfolio <InfoTip title="Initial portfolio">Starting portfolio in today's dollars. FireCalc and this tool use historical real (inflation-adjusted) returns, so inputs are in today's purchasing power.</InfoTip></label>
       <CurrencyInput value={initial} onChange={onInitial} />
 

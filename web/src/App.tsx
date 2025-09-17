@@ -82,7 +82,7 @@ export default function App() {
       band: res.quantiles.p90[i] - res.quantiles.p10[i],
     }))
 
-  const unitLabel = valueUnits === 'real' ? 'real $' : 'nominal $'
+  const unitLabel = valueUnits === 'real' ? 'inflation-adjusted $' : 'actual $'
   const toSeriesWithUnits = (res: any): SeriesPoint[] => {
     const base = toSeries(res)
     if (valueUnits === 'real') return base
@@ -100,11 +100,32 @@ export default function App() {
     const yearsCount = Math.floor(months / 12)
     const rows: CashFlowRow[] = []
     const initialTotal = (assets?.length ? assets.reduce((s, a) => s + (Number(a.amount) || 0), 0) : initial)
+    const vpct = vpwPct / 100
+    const gBand = guardBand / 100
+    const gStep = guardStep / 100
+    const initialWR = initialTotal > 0 ? (spend / initialTotal) : 0
+    let guardSpend = spend
     for (let y = 0; y < yearsCount; y++) {
       const prevIdx = y * 12 - 1
       let startMedian = y === 0 ? initialTotal : Number(res.quantiles.p50[prevIdx] ?? 0)
       let startP10 = y === 0 ? initialTotal : Number(res.quantiles.p10[prevIdx] ?? 0)
-      let basic = (y < startDelayYears) ? Math.max(annualContrib, 0) : -Math.max(spend, 0)
+      let basic = 0
+      if (y < startDelayYears) {
+        basic = Math.max(annualContrib, 0)
+      } else {
+        if (strategyName === 'variable_percentage') {
+          basic = -(startMedian * vpct)
+        } else if (strategyName === 'guardrails') {
+          const currentWR = startMedian > 0 ? (guardSpend / startMedian) : Infinity
+          const lower = initialWR * (1 - gBand)
+          const upper = initialWR * (1 + gBand)
+          if (currentWR > upper) guardSpend *= (1 - gStep)
+          else if (currentWR < lower) guardSpend *= (1 + gStep)
+          basic = -guardSpend
+        } else {
+          basic = -Math.max(spend, 0)
+        }
+      }
       let otherSpending = 0
       for (const exp of expenses || []) {
         const at = Number((exp as any).at_year_from_now ?? -1)
@@ -259,7 +280,6 @@ export default function App() {
           assets={assets} onAssetsChange={setAssets}
           otherIncomes={otherIncomes} onOtherIncomesChange={setOtherIncomes}
           expenses={expenses} onExpensesChange={setExpenses}
-          onApplyPreset={applyPreset}
           onRun={() => { histQuery.refetch(); mcQuery.refetch() }} running={loading}
         />
 
@@ -279,8 +299,8 @@ export default function App() {
             <div className="hstack" style={{ gap: 12, flexWrap: 'wrap' }}>
               <div className="label">Display:</div>
               <div className="switch">
-                <button type="button" className={valueUnits === 'real' ? 'active' : ''} onClick={() => setValueUnits('real')}>Real $</button>
-                <button type="button" className={valueUnits === 'nominal' ? 'active' : ''} onClick={() => setValueUnits('nominal')}>Nominal $</button>
+                <button type="button" className={valueUnits === 'real' ? 'active' : ''} onClick={() => setValueUnits('real')}>Inflation adjusted</button>
+                <button type="button" className={valueUnits === 'nominal' ? 'active' : ''} onClick={() => setValueUnits('nominal')}>Actual values</button>
               </div>
               {valueUnits === 'nominal' && (
                 <div className="hstack" style={{ gap: 6 }}>
