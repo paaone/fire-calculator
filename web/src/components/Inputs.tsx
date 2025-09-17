@@ -18,6 +18,7 @@ export default function Inputs(props: {
   incomeStartYear: number; onIncomeStartYear: (v: number) => void
   stillWorking: boolean; onStillWorking: (v: boolean) => void
   expectedRealReturn: number; onExpectedRealReturn: (v: number) => void
+  currentAge?: number; onCurrentAge?: (v: number) => void
   onApplyPreset?: (name: 'lean' | 'baseline' | 'fat') => void
   // Lists
   assets?: { name?: string; amount: number }[]; onAssetsChange?: (rows: { name?: string; amount: number }[]) => void
@@ -25,7 +26,7 @@ export default function Inputs(props: {
   expenses?: { amount: number; at_year_from_now: number }[]; onExpensesChange?: (rows: { amount: number; at_year_from_now: number }[]) => void
   onRun: () => void; running: boolean
 }) {
-  const { initial, onInitial, spend, onSpend, years, onYears, strategy, onStrategy, vpwPct, onVpwPct, guardBand, onGuardBand, guardStep, onGuardStep, startDelayYears, onStartDelay, annualContrib, onAnnualContrib, incomeAmount, onIncomeAmount, incomeStartYear, onIncomeStartYear, stillWorking, onStillWorking, expectedRealReturn, onExpectedRealReturn, onApplyPreset, assets = [], onAssetsChange, otherIncomes = [], onOtherIncomesChange, expenses = [], onExpensesChange, onRun, running } = props
+  const { initial, onInitial, spend, onSpend, years, onYears, strategy, onStrategy, vpwPct, onVpwPct, guardBand, onGuardBand, guardStep, onGuardStep, startDelayYears, onStartDelay, annualContrib, onAnnualContrib, incomeAmount, onIncomeAmount, incomeStartYear, onIncomeStartYear, stillWorking, onStillWorking, expectedRealReturn, onExpectedRealReturn, currentAge = 0, onCurrentAge, onApplyPreset, assets = [], onAssetsChange, otherIncomes = [], onOtherIncomesChange, expenses = [], onExpensesChange, onRun, running } = props
   return (
     <div className="panel vstack">
       <div>
@@ -58,6 +59,10 @@ export default function Inputs(props: {
         <div>
           <label className="label">Years (retirement horizon) <InfoTip title="Retirement length">How long the plan needs to last after retirement.</InfoTip></label>
           <input className="input" type="number" value={years} onChange={(e) => onYears(Number(e.target.value))} min={1} max={60} step={1} />
+        </div>
+        <div>
+          <label className="label">Current age <InfoTip title="Optional">Used to show your age in the detailed cashflow table.</InfoTip></label>
+          <input className="input" type="number" min={0} max={120} step={1} value={currentAge} onChange={(e) => onCurrentAge?.(Number(e.target.value))} />
         </div>
       </div>
 

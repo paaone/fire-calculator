@@ -1,6 +1,6 @@
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, ReferenceLine } from 'recharts'
 
-export interface SeriesPoint { month: number; year: number; p10: number; p90: number; band: number }
+export interface SeriesPoint { month: number; year: number; p10: number; p50: number; p90: number; band: number }
 
 function currency(n: number) {
   return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n)
@@ -27,10 +27,11 @@ export default function ProjectionChart({ data, title, retireAtMonths }: { data:
           {retireAtMonths && retireAtMonths > 0 && (
             <ReferenceLine x={data[0]?.year + Math.floor(retireAtMonths / 12)} stroke="#94a3b8" strokeWidth={2} strokeDasharray="4 3" label={{ value: 'Retire', position: 'insideTop', fill: '#64748b' }} />
           )}
-          {/* Confidence band (no legend clutter) */}
+          {/* Range band (p10 to p90) */}
           <Area type="monotone" dataKey="p10" stroke="#93c5fd" strokeWidth={2.2} fillOpacity={0} dot={false} stackId="band" />
           <Area type="monotone" dataKey="band" stroke="#1e88e5" strokeWidth={2.2} fill="url(#colorBand)" dot={false} stackId="band" />
-          {/* No median line for a cleaner look */}
+          {/* Median line */}
+          <Area type="monotone" dataKey="p50" stroke="#0ea5e9" strokeWidth={2.4} fillOpacity={0} dot={false} />
         </AreaChart>
       </ResponsiveContainer>
     </div>
@@ -52,24 +53,15 @@ function TooltipContent({ active, payload, label }: any) {
   const p10 = Number(payload.find((p: any) => p.dataKey === 'p10')?.value ?? 0)
   const band = Number(payload.find((p: any) => p.dataKey === 'band')?.value ?? 0)
   const p90 = p10 + band
+  const p50 = Number(payload.find((p: any) => p.dataKey === 'p50')?.value ?? 0)
   return (
     <div className="panel" style={{ padding: 12 }}>
       <div className="label" style={{ marginBottom: 4 }}>{year}</div>
+      <div><strong>Median:</strong> {currency(p50)}</div>
       <div><strong>Range:</strong> {currency(p10)} to {currency(p90)}</div>
     </div>
   )
 }
 
-function CustomTooltip({ active, payload, label }: any) {
-  if (!active || !payload?.length) return null
-  const year = Number(label)
-  const p10 = Number(payload.find((p: any) => p.dataKey === 'p10')?.value ?? 0)
-  const band = Number(payload.find((p: any) => p.dataKey === 'band')?.value ?? 0)
-  const p90 = p10 + band
-  return (
-    <div className="panel" style={{ padding: 12 }}>
-      <div className="label" style={{ marginBottom: 4 }}>{year}</div>
-      <div><strong>Range:</strong> {currency(p10)} – {currency(p90)}</div>
-    </div>
-  )
-}
+
+

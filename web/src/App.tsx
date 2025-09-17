@@ -36,6 +36,7 @@ export default function App() {
   const [blockSize, setBlockSize] = useState(12)
   const [inflationPct, setInflationPct] = useState(3)
   const [valueUnits, setValueUnits] = useState<'real' | 'nominal'>('real')
+  const [currentAge, setCurrentAge] = useState<number>(0)
 
   const strategy: Strategy = useMemo(() => {
     if (strategyName === 'variable_percentage') return { type: 'variable_percentage', percentage: vpwPct / 100 }
@@ -76,6 +77,7 @@ export default function App() {
       month: i + 1,
       year: baseYear + Math.floor(i / 12),
       p10: res.quantiles.p10[i],
+      p50: res.quantiles.p50[i],
       p90: res.quantiles.p90[i],
       band: res.quantiles.p90[i] - res.quantiles.p10[i],
     }))
@@ -88,7 +90,7 @@ export default function App() {
     return base.map((p, idx) => {
       const tYears = (idx + 1) / 12
       const f = Math.pow(r, tYears)
-      return { ...p, p10: p.p10 * f, band: p.band * f }
+      return { ...p, p10: p.p10 * f, p50: p.p50 * f, band: p.band * f }
     })
   }
 
@@ -97,18 +99,31 @@ export default function App() {
     const months = res.quantiles.p50.length
     const yearsCount = Math.floor(months / 12)
     const rows: CashFlowRow[] = []
-    for (let yIdx = 0; yIdx < yearsCount; yIdx++) {
-      const mIdx = (yIdx + 1) * 12 - 1
-      const p10 = Number(res.quantiles.p10[mIdx] ?? 0)
-      const p50 = Number(res.quantiles.p50[mIdx] ?? 0)
-      const p90 = Number(res.quantiles.p90[mIdx] ?? 0)
-      if (valueUnits === 'nominal') {
-        const tYears = (mIdx + 1) / 12
-        const f = Math.pow(1 + inflationPct / 100, tYears)
-        rows.push({ year: baseYear + yIdx, p10: p10 * f, p50: p50 * f, p90: p90 * f })
-      } else {
-        rows.push({ year: baseYear + yIdx, p10, p50, p90 })
+    const initialTotal = (assets?.length ? assets.reduce((s, a) => s + (Number(a.amount) || 0), 0) : initial)
+    for (let y = 0; y < yearsCount; y++) {
+      const prevIdx = y * 12 - 1
+      let startMedian = y === 0 ? initialTotal : Number(res.quantiles.p50[prevIdx] ?? 0)
+      let startP10 = y === 0 ? initialTotal : Number(res.quantiles.p10[prevIdx] ?? 0)
+      let basic = (y < startDelayYears) ? Math.max(annualContrib, 0) : -Math.max(spend, 0)
+      let otherSpending = 0
+      for (const exp of expenses || []) {
+        const at = Number((exp as any).at_year_from_now ?? -1)
+        if (at === y) otherSpending += Math.max(Number((exp as any).amount) || 0, 0)
       }
+      const retireYear = y - startDelayYears
+      let otherIncome = 0
+      if (retireYear >= Math.max(0, incomeStartYear)) otherIncome += Math.max(incomeAmount, 0)
+      for (const inc of otherIncomes || []) {
+        const startY = Number((inc as any).start_year || 0)
+        if (retireYear >= Math.max(0, startY)) otherIncome += Math.max(Number((inc as any).amount) || 0, 0)
+      }
+      let cashFlow = basic - otherSpending + otherIncome
+      if (valueUnits === 'nominal') {
+        const f = Math.pow(1 + inflationPct / 100, y)
+        startMedian *= f; startP10 *= f; basic *= f; otherSpending *= f; otherIncome *= f; cashFlow *= f
+      }
+      const age = currentAge > 0 ? currentAge + y : undefined
+      rows.push({ year: baseYear + y, age, startMedian, startP10, basic, otherSpending, otherIncome, cashFlow } as CashFlowRow)
     }
     return rows
   }
@@ -240,6 +255,7 @@ export default function App() {
           incomeStartYear={incomeStartYear} onIncomeStartYear={setIncomeStartYear}
           stillWorking={stillWorking} onStillWorking={setStillWorking}
           expectedRealReturn={expectedRealReturn} onExpectedRealReturn={setExpectedRealReturn}
+          currentAge={currentAge} onCurrentAge={setCurrentAge}
           assets={assets} onAssetsChange={setAssets}
           otherIncomes={otherIncomes} onOtherIncomesChange={setOtherIncomes}
           expenses={expenses} onExpensesChange={setExpenses}
@@ -292,9 +308,8 @@ export default function App() {
             <>
               <div className="callout"><div className="hstack" style={{ gap: 8 }}><FaCircleCheck color="#16a34a" /><strong>You’re FI‑ready based on history.</strong> Success rate is at least 80%. Explore the range below.</div></div>
               <ProjectionChart data={toSeriesWithUnits(hist)} title={`Historical projection (${unitLabel})`} retireAtMonths={startDelayYears * 12} />
-              <CashFlowTable rows={toCashFlowRows(hist)} title={`Historical projection table (${unitLabel})`} />
+              <CashFlowTable rows={toCashFlowRows(hist)} title={`Detailed cashflow table (${unitLabel})`} />
               <ProjectionChart data={toSeriesWithUnits(mc)} title={`Monte Carlo projection (${unitLabel})`} retireAtMonths={startDelayYears * 12} />
-              <CashFlowTable rows={toCashFlowRows(mc)} title={`Monte Carlo projection table (${unitLabel})`} />
               <Histogram values={(valueUnits === 'nominal') ? hist.ending_balances.map(v => v * Math.pow(1 + inflationPct / 100, years)) : hist.ending_balances} title={`Historical ending balances (${unitLabel})`} />
             </>
           )}

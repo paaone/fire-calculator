@@ -6,9 +6,13 @@ function currency(n: number) {
 
 export interface CashFlowRow {
   year: number
-  p10: number
-  p50: number
-  p90: number
+  age?: number
+  startMedian: number
+  startP10: number
+  basic: number
+  otherSpending: number
+  otherIncome: number
+  cashFlow: number
 }
 
 export default function CashFlowTable({ rows, title }: { rows: CashFlowRow[]; title?: string }) {
@@ -22,25 +26,33 @@ export default function CashFlowTable({ rows, title }: { rows: CashFlowRow[]; ti
         <table className="table">
           <thead>
             <tr>
-              <th>Year</th>
-              <th>p10 balance</th>
-              <th>p50 balance</th>
-              <th>p90 balance</th>
+              <th>Year/Age</th>
+              <th>Starting Portfolio Value (Median)</th>
+              <th>Starting Portfolio Value (10th Percentile)</th>
+              <th>Basic Saving or Retirement Spending</th>
+              <th>Other Spending Goals</th>
+              <th>Other Income Events</th>
+              <th>Cash Flow</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map((r) => (
-              <tr key={r.year}>
-                <td>{r.year}</td>
-                <td>{currency(r.p10)}</td>
-                <td>{currency(r.p50)}</td>
-                <td>{currency(r.p90)}</td>
-              </tr>
-            ))}
+            {rows.map((r) => {
+              const yearAge = r.age ? `${r.year} (${r.age})` : String(r.year)
+              return (
+                <tr key={r.year}>
+                  <td>{yearAge}</td>
+                  <td>{currency(r.startMedian)}</td>
+                  <td>{currency(r.startP10)}</td>
+                  <td>{currency(r.basic)}</td>
+                  <td>{currency(r.otherSpending)}</td>
+                  <td>{currency(r.otherIncome)}</td>
+                  <td>{currency(r.cashFlow)}</td>
+                </tr>
+              )
+            })}
           </tbody>
         </table>
       </div>
     </div>
   )
 }
-
