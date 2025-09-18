@@ -20,6 +20,18 @@ import {
 } from "./lib/api"
 import { computeYearsToFI, fireTargetFromSpend } from "./lib/journey"
 
+import {
+  SpendingCategoryPlan,
+  FutureExpensePlan,
+  FutureIncomePlan,
+  defaultSpendingCategories,
+  expandFutureExpenses,
+  expandFutureIncomes,
+  totalSpendingFromCategories,
+  scaleSpendingCategories,
+  createId,
+} from "./lib/planning"
+
 const DEFAULT_MARKET: MarketCode = "us"
 
 type ViewMode = "landing" | "results"
@@ -40,8 +52,11 @@ export default function App() {
   const [incomeStartYear, setIncomeStartYear] = useState(0)
   const [stillWorking, setStillWorking] = useState(true)
   const [expectedRealReturn, setExpectedRealReturn] = useState(5)
-  const [otherIncomes, setOtherIncomes] = useState<{ amount: number; start_year: number }[]>([])
-  const [expenses, setExpenses] = useState<{ amount: number; at_year_from_now: number }[]>([])
+  const [spendingCategories, setSpendingCategories] = useState<SpendingCategoryPlan[]>(() =>
+    defaultSpendingCategories(40_000),
+  )
+  const [futureExpenses, setFutureExpenses] = useState<FutureExpensePlan[]>([])
+  const [futureIncomes, setFutureIncomes] = useState<FutureIncomePlan[]>([])
   const [nPaths, setNPaths] = useState(1000)
   const [blockSize, setBlockSize] = useState(12)
   const [inflationPct, setInflationPct] = useState(3)
@@ -50,6 +65,18 @@ export default function App() {
 
   const [hydratedFromURL, setHydratedFromURL] = useState(false)
   const [applyDefaultsPending, setApplyDefaultsPending] = useState(false)
+
+  const handleSpendChange = useCallback((value: number) => {
+    const safe = Number.isFinite(value) ? Math.max(0, value) : 0
+    setSpend(safe)
+    setSpendingCategories((prev) => scaleSpendingCategories(prev, safe))
+  }, [])
+
+  const handleSpendingCategoriesChange = useCallback((rows: SpendingCategoryPlan[]) => {
+    setSpendingCategories(rows)
+    setSpend(totalSpendingFromCategories(rows))
+  }, [])
+
 
   const marketsQuery = useQuery<MarketCatalog>({
     queryKey: ["markets"],
@@ -84,7 +111,21 @@ export default function App() {
   const formatCurrency = useCallback((amount: number) => currencyFormatter.format(amount), [currencyFormatter])
   const unitLabel = valueUnits === "real" ? `inflation-adjusted ${currencySymbol}` : `actual ${currencySymbol}`
 
+  const derivedExpenses = useMemo(() => expandFutureExpenses(futureExpenses), [futureExpenses])
+  const derivedOtherIncomes = useMemo(() => expandFutureIncomes(futureIncomes), [futureIncomes])
+  const normalizedExpenses = useMemo(
+    () =>
+      derivedExpenses.filter((item) => Number.isFinite(item.amount) && Math.abs(item.amount) > 0.01),
+    [derivedExpenses],
+  )
+  const normalizedOtherIncomes = useMemo(
+    () =>
+      derivedOtherIncomes.filter((item) => Number.isFinite(item.amount) && Math.abs(item.amount) > 0.01),
+    [derivedOtherIncomes],
+  )
+
   const strategy: Strategy = useMemo(() => {
+
     if (strategyName === "variable_percentage") return { type: "variable_percentage", percentage: vpwPct / 100 }
     if (strategyName === "guardrails") return { type: "guardrails", guard_band: guardBand / 100, adjust_step: guardStep / 100 }
     return { type: "fixed" }
@@ -101,10 +142,22 @@ export default function App() {
       annual_contrib: annualContrib,
       income_amount: incomeAmount,
       income_start_year: incomeStartYear,
-      other_incomes: otherIncomes,
-      one_time_expenses: expenses,
+      other_incomes: normalizedOtherIncomes,
+      one_time_expenses: normalizedExpenses,
     }),
-    [market, initial, spend, years, strategy, startDelayYears, annualContrib, incomeAmount, incomeStartYear, otherIncomes, expenses],
+    [
+      market,
+      initial,
+      spend,
+      years,
+      strategy,
+      startDelayYears,
+      annualContrib,
+      incomeAmount,
+      incomeStartYear,
+      normalizedOtherIncomes,
+      normalizedExpenses,
+    ],
   )
 
   const histQuery = useQuery({
@@ -128,6 +181,7 @@ export default function App() {
     (meta: MarketMetadata) => {
       const d = meta.defaults
       setInitial(d.initial)
+      setSpendingCategories(defaultSpendingCategories(d.spend))
       setSpend(d.spend)
       setYears(d.years)
       setInflationPct(d.inflation_pct)
@@ -139,8 +193,8 @@ export default function App() {
       setStartDelayYears(d.start_delay_years)
       setNPaths(d.n_paths)
       setBlockSize(d.block_size)
-      setOtherIncomes([])
-      setExpenses([])
+      setFutureIncomes([])
+      setFutureExpenses([])
       setValueUnits("real")
     },
     [],
@@ -181,7 +235,7 @@ export default function App() {
     }
 
     setInitial(num("i", initial))
-    setSpend(num("s", spend))
+    const nextSpend = num("s", spend)
     setYears(num("y", years))
     setStillWorking(str("sw", "1") === "1")
     setAnnualContrib(num("ac", annualContrib))
@@ -205,20 +259,85 @@ export default function App() {
     const age = num("age", currentAge)
     if (age) setCurrentAge(age)
 
+    let parsedExtras: any = undefined
     const extras = params.get("x")
     if (extras) {
       try {
-        const payload = JSON.parse(decodeURIComponent(extras))
-        if (payload.otherIncomes) setOtherIncomes(payload.otherIncomes)
-        if (payload.expenses) setExpenses(payload.expenses)
+        parsedExtras = JSON.parse(decodeURIComponent(extras))
       } catch {
         // ignore malformed extras
       }
     }
 
+    if (parsedExtras?.spendingCategories?.length) {
+      setSpendingCategories(parsedExtras.spendingCategories)
+      setSpend(totalSpendingFromCategories(parsedExtras.spendingCategories))
+    } else {
+      handleSpendChange(nextSpend)
+    }
+
+    if (parsedExtras?.futureExpenses?.length) {
+      setFutureExpenses(parsedExtras.futureExpenses)
+    } else if (parsedExtras?.expenses?.length) {
+      setFutureExpenses(
+        parsedExtras.expenses.map((item: any, index: number) => ({
+          id: `${createId()}-${index}`,
+          label: item.label ?? `Goal ${index + 1}`,
+          amount: Number(item.amount ?? 0),
+          startYear: Number(item.at_year_from_now ?? 0),
+          years: 1,
+          inflation: 2.5,
+          category: "other" as const,
+          frequency: "one_time" as const,
+        })),
+      )
+    } else {
+      setFutureExpenses([])
+    }
+
+    if (parsedExtras?.futureIncomes?.length) {
+      setFutureIncomes(parsedExtras.futureIncomes)
+    } else if (parsedExtras?.otherIncomes?.length) {
+      setFutureIncomes(
+        parsedExtras.otherIncomes.map((item: any, index: number) => ({
+          id: `${createId()}-${index}`,
+          label: item.label ?? `Income ${index + 1}`,
+          amount: Number(item.amount ?? 0),
+          startYear: Number(item.start_year ?? 0),
+          years: 1,
+          inflation: 2.5,
+          category: "other" as const,
+          frequency: "one_time" as const,
+        })),
+      )
+    } else {
+      setFutureIncomes([])
+    }
+
     setHydratedFromURL(true)
     setView("results")
-  }, [marketMetadataList, hydratedFromURL, applyDefaultsFromMeta, initial, spend, years, strategyName, vpwPct, guardBand, guardStep, startDelayYears, annualContrib, incomeAmount, incomeStartYear, nPaths, blockSize, inflationPct, currentAge, valueUnits])
+  }, [
+    marketMetadataList,
+    hydratedFromURL,
+    applyDefaultsFromMeta,
+    initial,
+    spend,
+    years,
+    strategyName,
+    vpwPct,
+    guardBand,
+    guardStep,
+    startDelayYears,
+    annualContrib,
+    incomeAmount,
+    incomeStartYear,
+    nPaths,
+    blockSize,
+    inflationPct,
+    currentAge,
+    valueUnits,
+    handleSpendChange,
+  ])
 
   useEffect(() => {
     if (!applyDefaultsPending || !marketMeta) return
@@ -301,10 +420,10 @@ export default function App() {
         }
       }
 
-      const otherSpending = expenses
+      const otherSpending = normalizedExpenses
         .filter((item) => item.at_year_from_now === y)
         .reduce((acc, item) => acc + item.amount, 0)
-      const otherIncome = otherIncomes
+      const otherIncome = normalizedOtherIncomes
         .filter((item) => item.start_year === y)
         .reduce((acc, item) => acc + item.amount, 0)
       const recurringIncome = y >= incomeStartYear ? incomeAmount : 0
@@ -329,8 +448,10 @@ export default function App() {
 
   const applyPreset = useCallback((name: "lean" | "baseline" | "fat") => {
     if (name === "lean") {
+      const total = 25_000
       setInitial(500_000)
-      setSpend(25_000)
+      setSpendingCategories(defaultSpendingCategories(total))
+      setSpend(total)
       setYears(30)
       setStillWorking(true)
       setAnnualContrib(15_000)
@@ -339,12 +460,14 @@ export default function App() {
       setIncomeAmount(0)
       setIncomeStartYear(0)
       setStartDelayYears(0)
-      setOtherIncomes([])
-      setExpenses([])
+      setFutureIncomes([])
+      setFutureExpenses([])
       setValueUnits("real")
     } else if (name === "baseline") {
+      const total = 40_000
       setInitial(1_000_000)
-      setSpend(40_000)
+      setSpendingCategories(defaultSpendingCategories(total))
+      setSpend(total)
       setYears(30)
       setStillWorking(true)
       setAnnualContrib(20_000)
@@ -353,12 +476,14 @@ export default function App() {
       setIncomeAmount(0)
       setIncomeStartYear(0)
       setStartDelayYears(0)
-      setOtherIncomes([])
-      setExpenses([])
+      setFutureIncomes([])
+      setFutureExpenses([])
       setValueUnits("real")
     } else {
+      const total = 100_000
       setInitial(2_000_000)
-      setSpend(100_000)
+      setSpendingCategories(defaultSpendingCategories(total))
+      setSpend(total)
       setYears(35)
       setStillWorking(false)
       setAnnualContrib(0)
@@ -367,8 +492,8 @@ export default function App() {
       setIncomeAmount(0)
       setIncomeStartYear(0)
       setStartDelayYears(0)
-      setOtherIncomes([])
-      setExpenses([])
+      setFutureIncomes([])
+      setFutureExpenses([])
       setValueUnits("real")
     }
   }, [])
@@ -411,7 +536,11 @@ export default function App() {
     }
     params.set("np", String(nPaths))
     params.set("bs", String(blockSize))
-    const extras = { otherIncomes, expenses }
+    const extras = {
+      spendingCategories,
+      futureIncomes,
+      futureExpenses,
+    }
     try {
       params.set("x", encodeURIComponent(JSON.stringify(extras)))
     } catch {
@@ -456,7 +585,7 @@ export default function App() {
         initial={initial}
         onInitial={setInitial}
         spend={spend}
-        onSpend={setSpend}
+        onSpend={handleSpendChange}
         years={years}
         onYears={setYears}
         strategy={strategyName}
@@ -483,10 +612,12 @@ export default function App() {
         onCurrentAge={setCurrentAge}
         inflationPct={inflationPct}
         onInflationPct={setInflationPct}
-        otherIncomes={otherIncomes}
-        onOtherIncomesChange={setOtherIncomes}
-        expenses={expenses}
-        onExpensesChange={setExpenses}
+        spendingCategories={spendingCategories}
+        onSpendingCategoriesChange={handleSpendingCategoriesChange}
+        futureExpenses={futureExpenses}
+        onFutureExpensesChange={setFutureExpenses}
+        futureIncomes={futureIncomes}
+        onFutureIncomesChange={setFutureIncomes}
         onSimulate={() => setView("results")}
         running={loading}
         onApplyPreset={applyPreset}
@@ -506,7 +637,7 @@ export default function App() {
             initial={initial}
             onInitial={setInitial}
             spend={spend}
-            onSpend={setSpend}
+            onSpend={handleSpendChange}
             years={years}
             onYears={setYears}
             strategy={strategyName}
@@ -533,10 +664,12 @@ export default function App() {
             onCurrentAge={setCurrentAge}
             inflationPct={inflationPct}
             onInflationPct={setInflationPct}
-            otherIncomes={otherIncomes}
-            onOtherIncomesChange={setOtherIncomes}
-            expenses={expenses}
-            onExpensesChange={setExpenses}
+            spendingCategories={spendingCategories}
+            onSpendingCategoriesChange={handleSpendingCategoriesChange}
+            futureExpenses={futureExpenses}
+            onFutureExpensesChange={setFutureExpenses}
+            futureIncomes={futureIncomes}
+            onFutureIncomesChange={setFutureIncomes}
             onRun={() => {
               histQuery.refetch()
               mcQuery.refetch()
@@ -550,7 +683,7 @@ export default function App() {
 
           <div className="panel highlights">
             <div className="highlights__row">
-              <div className="badge">FIRE target (25×): {formatCurrency(fireTarget)}</div>
+              <div className="badge">FIRE target (25x): {formatCurrency(fireTarget)}</div>
               {stillWorking && <div className="badge badge-info">Estimated FI year: {baseYear + estimatedYearsToFI}</div>}
               {hist && <div className="badge badge-success">Historical success: {hist.success_rate.toFixed(1)}%</div>}
               {mc && <div className="badge badge-success">Monte Carlo success: {mc.success_rate.toFixed(1)}%</div>}
@@ -560,7 +693,9 @@ export default function App() {
               </button>
             </div>
             <div className="highlights__meta">
-              Market data refreshes automatically. Source: {marketMeta?.source}. coverage {marketMeta?.coverage.start} ? {marketMeta?.coverage.end} ({marketMeta?.coverage.months} months).
+              Market data refreshes automatically. Source: {marketMeta?.source}. Coverage {marketMeta?.coverage.start} -
+              {" "}
+              {marketMeta?.coverage.end} ({marketMeta?.coverage.months} months).
             </div>
           </div>
 
