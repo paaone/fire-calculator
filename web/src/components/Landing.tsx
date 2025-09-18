@@ -1,11 +1,12 @@
 import Inputs, { StrategyName, MarketSelection } from "./Inputs"
+import { SpendingCategoryPlan, FutureExpensePlan, FutureIncomePlan } from "../lib/planning"
 
 interface MarketOption {
   key: MarketSelection
   label: string
 }
 
-export default function Landing(props: {
+type LandingProps = {
   market: MarketSelection
   markets: MarketOption[]
   onMarketChange: (market: MarketSelection) => void
@@ -43,74 +44,79 @@ export default function Landing(props: {
   onSimulate: () => void
   running: boolean
   onApplyPreset?: (name: "lean" | "baseline" | "fat") => void
-  otherIncomes?: { amount: number; start_year: number }[]
-  onOtherIncomesChange?: (rows: { amount: number; start_year: number }[]) => void
-  expenses?: { amount: number; at_year_from_now: number }[]
-  onExpensesChange?: (rows: { amount: number; at_year_from_now: number }[]) => void
-}) {
-  const p = props
+  spendingCategories: SpendingCategoryPlan[]
+  onSpendingCategoriesChange: (rows: SpendingCategoryPlan[]) => void
+  futureExpenses: FutureExpensePlan[]
+  onFutureExpensesChange: (rows: FutureExpensePlan[]) => void
+  futureIncomes: FutureIncomePlan[]
+  onFutureIncomesChange: (rows: FutureIncomePlan[]) => void
+}
+
+export default function Landing(p: LandingProps) {
   return (
     <div className="landing">
-      <div className="landing__grid">
-        <section className="landing__hero">
-          <span className="landing__tag">Now covering US and India markets</span>
-          <h1>Plan your FIRE journey with realistic market data</h1>
-          <p>
-            Stress-test your spending plan against every historical market path and a modern Monte Carlo simulation. Toggle markets, adjust assumptions, and get a feel for your odds before you pull the trigger.
-          </p>
-          <div className="landing__actions">
-            <button className="btn btn-primary btn-lg" type="button" onClick={p.onSimulate} disabled={p.running}>
-              {p.running ? "Preparing..." : "Jump to results"}
-            </button>
-            <span className="help">Or tailor the assumptions below first.</span>
-          </div>
-        </section>
-        <section className="landing__panel">
-          <Inputs
-            market={p.market}
-            markets={p.markets}
-            onMarketChange={p.onMarketChange}
-            currencyCode={p.currencyCode}
-            initial={p.initial}
-            onInitial={p.onInitial}
-            spend={p.spend}
-            onSpend={p.onSpend}
-            years={p.years}
-            onYears={p.onYears}
-            strategy={p.strategy}
-            onStrategy={p.onStrategy}
-            vpwPct={p.vpwPct}
-            onVpwPct={p.onVpwPct}
-            guardBand={p.guardBand}
-            onGuardBand={p.onGuardBand}
-            guardStep={p.guardStep}
-            onGuardStep={p.onGuardStep}
-            startDelayYears={p.startDelayYears}
-            onStartDelay={p.onStartDelay}
-            annualContrib={p.annualContrib}
-            onAnnualContrib={p.onAnnualContrib}
-            incomeAmount={p.incomeAmount}
-            onIncomeAmount={p.onIncomeAmount}
-            incomeStartYear={p.incomeStartYear}
-            onIncomeStartYear={p.onIncomeStartYear}
-            stillWorking={p.stillWorking}
-            onStillWorking={p.onStillWorking}
-            expectedRealReturn={p.expectedRealReturn}
-            onExpectedRealReturn={p.onExpectedRealReturn}
-            currentAge={p.currentAge}
-            onCurrentAge={p.onCurrentAge}
-            inflationPct={p.inflationPct}
-            onInflationPct={p.onInflationPct}
-            otherIncomes={p.otherIncomes}
-            onOtherIncomesChange={p.onOtherIncomesChange}
-            expenses={p.expenses}
-            onExpensesChange={p.onExpensesChange}
-            onRun={p.onSimulate}
-            running={p.running}
-            onApplyPreset={p.onApplyPreset}
-          />
-        </section>
-      </div>
+      <section className="landing__hero">
+        <span className="landing__tag">Now covering US and India markets</span>
+        <h1>Plan your FIRE journey with realistic market data</h1>
+        <p>
+          Stress-test your spending plan against every historical market path and a modern Monte Carlo simulation. Toggle markets,
+          adjust assumptions, and get a feel for your odds before you pull the trigger.
+        </p>
+        <div className="landing__actions">
+          <button className="btn btn-primary btn-lg" type="button" onClick={p.onSimulate} disabled={p.running}>
+            {p.running ? "Preparing..." : "Jump to results"}
+          </button>
+          <span className="help">Or tailor the assumptions below first.</span>
+        </div>
+      </section>
+
+      <section className="landing__panel">
+        <Inputs
+          market={p.market}
+          markets={p.markets}
+          onMarketChange={p.onMarketChange}
+          currencyCode={p.currencyCode}
+          initial={p.initial}
+          onInitial={p.onInitial}
+          spend={p.spend}
+          onSpend={p.onSpend}
+          years={p.years}
+          onYears={p.onYears}
+          strategy={p.strategy}
+          onStrategy={p.onStrategy}
+          vpwPct={p.vpwPct}
+          onVpwPct={p.onVpwPct}
+          guardBand={p.guardBand}
+          onGuardBand={p.onGuardBand}
+          guardStep={p.guardStep}
+          onGuardStep={p.onGuardStep}
+          startDelayYears={p.startDelayYears}
+          onStartDelay={p.onStartDelay}
+          annualContrib={p.annualContrib}
+          onAnnualContrib={p.onAnnualContrib}
+          incomeAmount={p.incomeAmount}
+          onIncomeAmount={p.onIncomeAmount}
+          incomeStartYear={p.incomeStartYear}
+          onIncomeStartYear={p.onIncomeStartYear}
+          stillWorking={p.stillWorking}
+          onStillWorking={p.onStillWorking}
+          expectedRealReturn={p.expectedRealReturn}
+          onExpectedRealReturn={p.onExpectedRealReturn}
+          currentAge={p.currentAge}
+          onCurrentAge={p.onCurrentAge}
+          inflationPct={p.inflationPct}
+          onInflationPct={p.onInflationPct}
+          spendingCategories={p.spendingCategories}
+          onSpendingCategoriesChange={p.onSpendingCategoriesChange}
+          futureExpenses={p.futureExpenses}
+          onFutureExpensesChange={p.onFutureExpensesChange}
+          futureIncomes={p.futureIncomes}
+          onFutureIncomesChange={p.onFutureIncomesChange}
+          onRun={p.onSimulate}
+          running={p.running}
+          onApplyPreset={p.onApplyPreset}
+        />
+      </section>
     </div>
   )
 }
