@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable, Dict, Optional, Tuple
+from typing import Any, Callable, Dict, Optional, Tuple
 import time
 from datetime import datetime, timezone
 
@@ -26,6 +26,33 @@ class MarketDefaults:
     start_delay_years: int = 0
     n_paths: int = 1000
     block_size: int = 12
+    profile: Dict[str, Any] = field(default_factory=lambda: {"current_age": 35, "retirement_age": 65})
+    assumptions: Dict[str, Any] = field(
+        default_factory=lambda: {
+            "return_series": "registry_default",
+            "success_threshold_pct": 80.0,
+            "monte_carlo_paths": 1000,
+            "monte_carlo_block_size": 12,
+        }
+    )
+    expense_category_inflation: Dict[str, float] = field(
+        default_factory=lambda: {
+            "baseline": 3.0,
+            "healthcare": 5.0,
+            "education": 4.0,
+            "housing": 3.0,
+            "leisure": 2.5,
+        }
+    )
+    income_category_inflation: Dict[str, float] = field(
+        default_factory=lambda: {
+            "baseline": 0.0,
+            "social_security": 2.0,
+            "inheritance": 0.0,
+            "rental": 2.5,
+            "other": 0.0,
+        }
+    )
 
 
 @dataclass
@@ -114,5 +141,6 @@ class MarketRegistry:
 
     def all(self) -> Dict[str, MarketDefinition]:
         return dict(self._definitions)
+
 
 
