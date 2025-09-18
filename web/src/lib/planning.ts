@@ -176,27 +176,29 @@ function growAmount(amount: number, inflationPct: number, yearsFromNow: number):
   return amount * Math.pow(rate, exponent)
 }
 
-export function expandFutureExpenses(items: FutureExpensePlan[]): { amount: number; at_year_from_now: number }[] {
-  const expanded: { amount: number; at_year_from_now: number }[] = []
+export function expandFutureExpenses(items: FutureExpensePlan[]): { amount: number; real_amount: number; at_year_from_now: number }[] {
+  const expanded: { amount: number; real_amount: number; at_year_from_now: number }[] = []
   items.forEach((item) => {
     const cycles = item.frequency === "recurring" ? Math.max(1, Math.round(item.years)) : 1
     for (let i = 0; i < cycles; i++) {
       const year = Math.max(0, Math.round(item.startYear + i))
       const nominalAmount = growAmount(item.amount, item.inflation, year)
-      expanded.push({ amount: roundCurrency(nominalAmount), at_year_from_now: year })
+      const realAmount = roundCurrency(item.amount)
+      expanded.push({ amount: roundCurrency(nominalAmount), real_amount: realAmount, at_year_from_now: year })
     }
   })
   return expanded
 }
 
-export function expandFutureIncomes(items: FutureIncomePlan[]): { amount: number; start_year: number }[] {
-  const expanded: { amount: number; start_year: number }[] = []
+export function expandFutureIncomes(items: FutureIncomePlan[]): { amount: number; nominal_amount: number; start_year: number }[] {
+  const expanded: { amount: number; nominal_amount: number; start_year: number }[] = []
   items.forEach((item) => {
     const cycles = item.frequency === "recurring" ? Math.max(1, Math.round(item.years)) : 1
     for (let i = 0; i < cycles; i++) {
       const year = Math.max(0, Math.round(item.startYear + i))
       const realAmount = toRealAmount(item.amount, item.inflation, year)
-      expanded.push({ amount: roundCurrency(realAmount), start_year: year })
+      const nominalAmount = growAmount(item.amount, item.inflation, year)
+      expanded.push({ amount: roundCurrency(realAmount), nominal_amount: roundCurrency(nominalAmount), start_year: year })
     }
   })
   return expanded

@@ -42,6 +42,10 @@ export interface MarketCatalog {
   markets: MarketMetadata[]
 }
 
+export interface ClientProfile {
+  current_age: number
+}
+
 export interface SimRequest {
   market: MarketCode
   initial: number
@@ -54,6 +58,7 @@ export interface SimRequest {
   income_start_year?: number
   other_incomes?: { amount: number; start_year: number }[]
   one_time_expenses?: { amount: number; at_year_from_now: number }[]
+  profile?: ClientProfile
 }
 
 export interface SimResult {
@@ -67,6 +72,57 @@ export interface SimResult {
 
 const API_BASE = (import.meta as any).env?.VITE_API_BASE || "http://localhost:8000"
 
+const VALIDATION_LABELS: Record<string, string> = {
+  market: "Market data set",
+  initial: "Current invested portfolio",
+  spend: "Total annual living expenses",
+  years: "Years to fund",
+  strategy: "Withdrawal strategy",
+  start_delay_years: "Years until retirement",
+  annual_contrib: "Annual savings until retirement",
+  income_amount: "Recurring income amount",
+  income_start_year: "Recurring income start year",
+  other_incomes: "Other incomes",
+  one_time_expenses: "Future spending events",
+  n_paths: "Simulated paths",
+  block_size: "Block size",
+}
+
+function friendlyFieldLabel(field: string | number | undefined): string {
+  if (typeof field !== "string" || !field.length) return "This field"
+  return VALIDATION_LABELS[field] ?? field.replace(/_/g, " ").replace(/\b\w/g, (match) => match.toUpperCase())
+}
+
+function formatValidationIssues(detail: unknown): string | undefined {
+  if (!Array.isArray(detail)) return undefined
+  const lines: string[] = []
+  for (const issue of detail as any[]) {
+    const location = Array.isArray(issue?.loc) ? issue.loc[issue.loc.length - 1] : undefined
+    const label = friendlyFieldLabel(location)
+    if (issue?.type === "greater_than_equal" && issue?.ctx?.ge !== undefined) {
+      lines.push(`${label} must be at least ${issue.ctx.ge}. Update ${label.toLowerCase()} and try again.`)
+      continue
+    }
+    if (issue?.type === "greater_than" && issue?.ctx?.gt !== undefined) {
+      lines.push(`${label} must be greater than ${issue.ctx.gt}. Try a higher value.`)
+      continue
+    }
+    if (issue?.type === "less_than_equal" && issue?.ctx?.le !== undefined) {
+      lines.push(`${label} must be ${issue.ctx.le} or less.`)
+      continue
+    }
+    if (issue?.type === "missing" || issue?.type === "value_error.missing") {
+      lines.push(`Please enter a value for ${label.toLowerCase()}.`)
+      continue
+    }
+    if (typeof issue?.msg === "string") {
+      lines.push(`${label}: ${issue.msg}`)
+    }
+  }
+  if (!lines.length) return undefined
+  return lines.join(" ")
+}
+
 async function throwFromResponse(res: Response, fallback: string): Promise<never> {
   let message = `${fallback} (${res.status})`
   try {
@@ -74,10 +130,14 @@ async function throwFromResponse(res: Response, fallback: string): Promise<never
     if (text) {
       try {
         const data = JSON.parse(text)
-        if (typeof data?.detail === "string") {
-          message = data.detail
-        } else if (data?.detail) {
-          message = JSON.stringify(data.detail)
+        const detail = data?.detail
+        if (Array.isArray(detail)) {
+          const formatted = formatValidationIssues(detail)
+          message = formatted ?? JSON.stringify(detail)
+        } else if (typeof detail === "string") {
+          message = detail
+        } else if (detail) {
+          message = JSON.stringify(detail)
         } else if (data?.message) {
           message = data.message
         } else {

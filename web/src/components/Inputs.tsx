@@ -1,6 +1,9 @@
-import { useMemo } from "react"
+import { useMemo, useState, useEffect } from "react"
 import Accordion from "./Accordion"
 import CurrencyInput from "./CurrencyInput"
+import NumberInput from "./NumberInput"
+import { FaCircleInfo, FaMinusCircle, FaXmark } from "react-icons/fa6"
+
 import {
   SpendingCategoryPlan,
   FutureExpensePlan,
@@ -193,6 +196,19 @@ export default function Inputs({
   const incomeLabelOptions = useMemo(() => FUTURE_INCOME_OPTIONS.map((option) => option.label), [])
   const totalBreakdown = totalSpendingFromCategories(spendingCategories)
   const breakdownMatchesSpend = Math.abs(totalBreakdown - spend) < 0.5
+  const [showStrategyInfo, setShowStrategyInfo] = useState(false)
+
+  useEffect(() => {
+    if (!showStrategyInfo) return
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setShowStrategyInfo(false)
+      }
+    }
+    window.addEventListener("keydown", handleKey)
+    return () => window.removeEventListener("keydown", handleKey)
+  }, [showStrategyInfo])
+
 
   const handleCategoryChange = (index: number, update: Partial<SpendingCategoryPlan>) => {
     const current = spendingCategories[index]
@@ -364,7 +380,15 @@ export default function Inputs({
       <div className="row">
         <div>
           <FieldHeader label="Current age" />
-          <input className="input" type="number" min={0} max={120} step={1} value={currentAge} onChange={(e) => onCurrentAge?.(Number(e.target.value))} />
+          <NumberInput
+            className="input"
+            min={0}
+            max={120}
+            step={1}
+            decimal={false}
+            value={currentAge}
+            onChange={(value) => onCurrentAge?.(value)}
+          />
         </div>
         <div>
           <FieldHeader label="Working status" help="Helps determine whether we assume ongoing savings before retirement." />
@@ -375,14 +399,30 @@ export default function Inputs({
         </div>
         <div>
           <FieldHeader label="Years to fund" help="How many retirement years you'd like to cover." />
-          <input className="input" type="number" min={1} max={60} step={1} value={years} onChange={(e) => onYears(Number(e.target.value))} />
+          <NumberInput
+            className="input"
+            min={1}
+            max={60}
+            step={1}
+            decimal={false}
+            value={years}
+            onChange={(value) => onYears(value)}
+          />
         </div>
       </div>
 
       <div className="row">
         <div>
           <FieldHeader label="Years until retirement" help="Zero means you're retired now." />
-          <input className="input" type="number" min={0} max={40} step={1} value={startDelayYears} onChange={(e) => onStartDelay(Number(e.target.value))} />
+          <NumberInput
+            className="input"
+            min={0}
+            max={40}
+            step={1}
+            decimal={false}
+            value={startDelayYears}
+            onChange={(value) => onStartDelay(value)}
+          />
         </div>
         <div>
           <FieldHeader label="Annual savings until retirement" />
@@ -390,7 +430,14 @@ export default function Inputs({
         </div>
         <div>
           <FieldHeader label="Expected real return while working" help="Real (after inflation) annual growth assumption before retirement." />
-          <input className="input" type="number" min={0} max={15} step={0.1} value={expectedRealReturn} onChange={(e) => onExpectedRealReturn(Number(e.target.value))} />
+          <NumberInput
+            className="input"
+            min={0}
+            max={15}
+            step={0.1}
+            value={expectedRealReturn}
+            onChange={(value) => onExpectedRealReturn(value)}
+          />
         </div>
       </div>
 
@@ -403,7 +450,14 @@ export default function Inputs({
         <div className="row">
           <div>
             <FieldHeader label="Inflation assumption" help="Used when toggling to nominal (actual) dollars." />
-            <input className="input" type="number" min={0} max={15} step={0.1} value={inflationPct} onChange={(e) => onInflationPct?.(Number(e.target.value))} />
+            <NumberInput
+              className="input"
+              min={0}
+              max={15}
+              step={0.1}
+              value={inflationPct}
+              onChange={(value) => onInflationPct?.(value)}
+            />
           </div>
         </div>
       </Accordion>
@@ -453,8 +507,13 @@ export default function Inputs({
                   value={item.inflation}
                   onChange={(e) => handleCategoryChange(idx, { inflation: Number(e.target.value) })}
                 />
-                <button className="btn btn-secondary btn-sm" type="button" onClick={() => handleRemoveCategory(idx)}>
-                  Remove
+                <button
+                  className="btn-icon btn-icon-danger"
+                  type="button"
+                  aria-label="Remove category"
+                  onClick={() => handleRemoveCategory(idx)}
+                >
+                  <FaMinusCircle aria-hidden="true" />
                 </button>
               </div>
             ))}
@@ -505,15 +564,15 @@ export default function Inputs({
                   onChange={(e) => handleExpenseLabelChange(idx, e.target.value)}
                 />
                 <CurrencyInput value={item.amount} onChange={(value) => handleExpenseChange(idx, { amount: value })} currency={currencyCode} />
-                <input
+                <NumberInput
                   className="input"
-                  type="number"
                   min={0}
                   max={60}
                   step={1}
+                  decimal={false}
                   aria-label="Start year"
                   value={item.startYear}
-                  onChange={(e) => handleExpenseChange(idx, { startYear: Number(e.target.value) })}
+                  onChange={(value) => handleExpenseChange(idx, { startYear: value })}
                 />
                 <select
                   className="select"
@@ -528,31 +587,35 @@ export default function Inputs({
                   ))}
                 </select>
                 {isRecurring ? (
-                  <input
+                  <NumberInput
                     className="input"
-                    type="number"
                     min={1}
                     max={40}
                     step={1}
+                    decimal={false}
                     aria-label="Number of years"
                     value={item.years}
-                    onChange={(e) => handleExpenseChange(idx, { years: Number(e.target.value) })}
+                    onChange={(value) => handleExpenseChange(idx, { years: value })}
                   />
                 ) : (
                   <span className="future-grid__muted">-</span>
                 )}
-                <input
+                <NumberInput
                   className="input"
-                  type="number"
                   min={0}
                   max={10}
                   step={0.1}
                   aria-label="Expense inflation percent"
                   value={item.inflation}
-                  onChange={(e) => handleExpenseChange(idx, { inflation: Number(e.target.value) })}
+                  onChange={(value) => handleExpenseChange(idx, { inflation: value })}
                 />
-                <button className="btn btn-secondary btn-sm" type="button" onClick={() => handleRemoveExpense(idx)}>
-                  Remove
+                <button
+                  className="btn-icon btn-icon-danger"
+                  type="button"
+                  aria-label="Remove expense"
+                  onClick={() => handleRemoveExpense(idx)}
+                >
+                  <FaMinusCircle aria-hidden="true" />
                 </button>
               </div>
             )
@@ -582,7 +645,7 @@ export default function Inputs({
         </div>
         <div>
           <FieldHeader label="Starts in retirement year" help="Year offset from today (0 = immediately)." />
-          <input className="input" type="number" min={0} max={60} step={1} value={incomeStartYear} onChange={(e) => onIncomeStartYear(Number(e.target.value))} />
+          <NumberInput className="input" min={0} max={60} step={1} decimal={false} value={incomeStartYear} onChange={(value) => onIncomeStartYear(value)} />
         </div>
       </div>
 
@@ -610,15 +673,15 @@ export default function Inputs({
                   onChange={(e) => handleIncomeLabelChange(idx, e.target.value)}
                 />
                 <CurrencyInput value={item.amount} onChange={(value) => handleIncomeChange(idx, { amount: value })} currency={currencyCode} />
-                <input
+                <NumberInput
                   className="input"
-                  type="number"
                   min={0}
                   max={60}
                   step={1}
+                  decimal={false}
                   aria-label="Income start year"
                   value={item.startYear}
-                  onChange={(e) => handleIncomeChange(idx, { startYear: Number(e.target.value) })}
+                  onChange={(value) => handleIncomeChange(idx, { startYear: value })}
                 />
                 <select
                   className="select"
@@ -633,31 +696,35 @@ export default function Inputs({
                   ))}
                 </select>
                 {isRecurring ? (
-                  <input
+                  <NumberInput
                     className="input"
-                    type="number"
                     min={1}
                     max={60}
                     step={1}
+                    decimal={false}
                     aria-label="Income duration"
                     value={item.years}
-                    onChange={(e) => handleIncomeChange(idx, { years: Number(e.target.value) })}
+                    onChange={(value) => handleIncomeChange(idx, { years: value })}
                   />
                 ) : (
                   <span className="income-grid__muted">-</span>
                 )}
-                <input
+                <NumberInput
                   className="input"
-                  type="number"
                   min={0}
                   max={10}
                   step={0.1}
                   aria-label="Income inflation percent"
                   value={item.inflation}
-                  onChange={(e) => handleIncomeChange(idx, { inflation: Number(e.target.value) })}
+                  onChange={(value) => handleIncomeChange(idx, { inflation: value })}
                 />
-                <button className="btn btn-secondary btn-sm" type="button" onClick={() => handleRemoveIncome(idx)}>
-                  Remove
+                <button
+                  className="btn-icon btn-icon-danger"
+                  type="button"
+                  aria-label="Remove income"
+                  onClick={() => handleRemoveIncome(idx)}
+                >
+                  <FaMinusCircle aria-hidden="true" />
                 </button>
               </div>
             )
@@ -691,17 +758,53 @@ export default function Inputs({
             Guardrails
           </button>
         </div>
-        <div className="withdrawal-explainer">
-          <p><strong>Fixed:</strong> Keeps withdrawals level in today's dollars. Example: on a $1,000,000 nest egg with a 4% target you withdraw $40,000 this year and adjust that amount only for inflation.</p>
-          <p><strong>Variable %:</strong> Draws a set percentage of whatever the portfolio is worth each year. If you withdraw 4% from $1,000,000 ($40,000) and markets drop to $800,000, next year's withdrawal becomes $32,000.</p>
-          <p><strong>Guardrails:</strong> Starts at your target withdrawal but increases or decreases it when the withdrawal rate drifts outside your guard band. For example, with a 4% goal and a +/-20% band you would raise spending if markets surge and trim it if the portfolio shrinks too far.</p>
+        <div className="withdrawal-info">
+          <button
+            type="button"
+            className="info-trigger"
+            onClick={() => setShowStrategyInfo(true)}
+            aria-haspopup="dialog"
+            aria-expanded={showStrategyInfo}
+            aria-controls="withdrawal-info-dialog"
+          >
+            <FaCircleInfo aria-hidden="true" />
+            <span>Explain the strategies</span>
+          </button>
         </div>
+        {showStrategyInfo && (
+          <div
+            className="modal-overlay"
+            role="dialog"
+            aria-modal="true"
+            id="withdrawal-info-dialog"
+            onClick={() => setShowStrategyInfo(false)}
+          >
+            <div className="modal-card" onClick={(event) => event.stopPropagation()}>
+              <div className="modal-card__header">
+                <h4>Withdrawal strategies</h4>
+                <button
+                  type="button"
+                  className="btn-icon"
+                  onClick={() => setShowStrategyInfo(false)}
+                  aria-label="Close strategy explanations"
+                >
+                  <FaXmark aria-hidden="true" />
+                </button>
+              </div>
+              <div className="modal-card__body">
+                <p><strong>Fixed:</strong> Keeps withdrawals level in today's dollars. Example: on a $1,000,000 nest egg with a 4% target you withdraw $40,000 this year and adjust that amount only for inflation.</p>
+                <p><strong>Variable %:</strong> Draws a set percentage of whatever the portfolio is worth each year. If you withdraw 4% from $1,000,000 ($40,000) and markets drop to $800,000, next year's withdrawal becomes $32,000.</p>
+                <p><strong>Guardrails:</strong> Starts at your target withdrawal but increases or decreases it when the withdrawal rate drifts outside your guard band. For example, with a 4% goal and a +/-20% band you would raise spending if markets surge and trim it if the portfolio shrinks too far.</p>
+              </div>
+            </div>
+          </div>
+        )}\r
       </div>
 
       {strategy === "variable_percentage" && (
         <div>
           <FieldHeader label="Variable percentage" help="Annual percentage of the portfolio withdrawn." />
-          <input className="input" type="number" min={1} max={10} step={0.1} value={vpwPct} onChange={(e) => onVpwPct(Number(e.target.value))} />
+          <NumberInput className="input" min={1} max={10} step={0.1} value={vpwPct} onChange={(value) => onVpwPct(value)} />
         </div>
       )}
 
@@ -709,11 +812,11 @@ export default function Inputs({
         <div className="row">
           <div>
             <FieldHeader label="Guard band %" help="Width of the acceptable withdrawal range based on the initial withdrawal rate." />
-            <input className="input" type="number" min={5} max={50} step={1} value={guardBand} onChange={(e) => onGuardBand(Number(e.target.value))} />
+            <NumberInput className="input" min={5} max={50} step={1} decimal={false} value={guardBand} onChange={(value) => onGuardBand(value)} />
           </div>
           <div>
             <FieldHeader label="Adjust step %" help="Percentage change applied when hitting a guardrail." />
-            <input className="input" type="number" min={5} max={30} step={1} value={guardStep} onChange={(e) => onGuardStep(Number(e.target.value))} />
+            <NumberInput className="input" min={5} max={30} step={1} decimal={false} value={guardStep} onChange={(value) => onGuardStep(value)} />
           </div>
         </div>
       )}

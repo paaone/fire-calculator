@@ -94,7 +94,7 @@ export default function App() {
   const [blockSize, setBlockSize] = useState(12)
   const [inflationPct, setInflationPct] = useState(3)
   const [valueUnits, setValueUnits] = useState<"real" | "nominal">("real")
-  const [currentAge, setCurrentAge] = useState(0)
+  const [currentAge, setCurrentAge] = useState(35)
 
   const [hydratedFromURL, setHydratedFromURL] = useState(false)
   const [applyDefaultsPending, setApplyDefaultsPending] = useState(false)
@@ -157,6 +157,38 @@ export default function App() {
     [derivedOtherIncomes],
   )
 
+  const expenseSchedule = useMemo(() => {
+    const map = new Map<number, { nominal: number; real: number }>()
+    normalizedExpenses.forEach((item) => {
+      const bucket = map.get(item.at_year_from_now) ?? { nominal: 0, real: 0 }
+      bucket.nominal += item.amount
+      bucket.real += item.real_amount ?? item.amount
+      map.set(item.at_year_from_now, bucket)
+    })
+    return map
+  }, [normalizedExpenses])
+
+  const incomeSchedule = useMemo(() => {
+    const map = new Map<number, { nominal: number; real: number }>()
+    normalizedOtherIncomes.forEach((item) => {
+      const bucket = map.get(item.start_year) ?? { nominal: 0, real: 0 }
+      bucket.real += item.amount
+      bucket.nominal += item.nominal_amount ?? item.amount
+      map.set(item.start_year, bucket)
+    })
+    return map
+  }, [normalizedOtherIncomes])
+
+  const requestExpenses = useMemo(
+    () => normalizedExpenses.map(({ amount, at_year_from_now }) => ({ amount, at_year_from_now })),
+    [normalizedExpenses],
+  )
+
+  const requestIncomes = useMemo(
+    () => normalizedOtherIncomes.map(({ amount, start_year }) => ({ amount, start_year })),
+    [normalizedOtherIncomes],
+  )
+
   const strategy: Strategy = useMemo(() => {
 
     if (strategyName === "variable_percentage") return { type: "variable_percentage", percentage: vpwPct / 100 }
@@ -175,8 +207,9 @@ export default function App() {
       annual_contrib: annualContrib,
       income_amount: incomeAmount,
       income_start_year: incomeStartYear,
-      other_incomes: normalizedOtherIncomes,
-      one_time_expenses: normalizedExpenses,
+      other_incomes: requestIncomes,
+      one_time_expenses: requestExpenses,
+      profile: { current_age: currentAge },
     }),
     [
       market,
@@ -188,8 +221,9 @@ export default function App() {
       annualContrib,
       incomeAmount,
       incomeStartYear,
-      normalizedOtherIncomes,
-      normalizedExpenses,
+      requestIncomes,
+      requestExpenses,
+      currentAge,
     ],
   )
 
@@ -392,11 +426,11 @@ export default function App() {
     if (stillWorking) {
       const retireYear = baseYear + Math.max(0, Math.round(startDelayYears))
       if (retireYear > baseYear) {
-        phases.push({ start: baseYear, end: retireYear, color: 'rgba(37, 99, 235, 0.08)', label: 'Working years' })
+        phases.push({ start: baseYear, end: retireYear, color: 'rgba(37, 99, 235, 0.16)', label: 'Working years' })
       }
-      phases.push({ start: retireYear, end: horizonYear, color: 'rgba(16, 185, 129, 0.08)', label: 'Retirement years' })
+      phases.push({ start: retireYear, end: horizonYear, color: 'rgba(16, 185, 129, 0.14)', label: 'Retirement years' })
     } else {
-      phases.push({ start: baseYear, end: horizonYear, color: 'rgba(16, 185, 129, 0.08)', label: 'Retirement years' })
+      phases.push({ start: baseYear, end: horizonYear, color: 'rgba(16, 185, 129, 0.14)', label: 'Retirement years' })
     }
     return phases.filter((phase) => Number.isFinite(phase.start) && (phase.end === undefined || Number.isFinite(phase.end)))
   }, [stillWorking, startDelayYears, years, baseYear])
@@ -418,7 +452,7 @@ export default function App() {
 
     if (stillWorking) {
       const retirementYear = baseYear + Math.max(0, Math.round(startDelayYears))
-      addMilestone(retirementYear, "ð´", "Retirement", true)
+      addMilestone(retirementYear, RETIREMENT_EMOJI, "Retirement", true)
     }
 
     futureExpenses
@@ -500,12 +534,10 @@ export default function App() {
         }
       }
 
-      const otherSpending = normalizedExpenses
-        .filter((item) => item.at_year_from_now === y)
-        .reduce((acc, item) => acc + item.amount, 0)
-      const otherIncome = normalizedOtherIncomes
-        .filter((item) => item.start_year === y)
-        .reduce((acc, item) => acc + item.amount, 0)
+      const expenseBucket = expenseSchedule.get(y) ?? { nominal: 0, real: 0 }
+      const otherSpending = valueUnits === \"nominal\" ? expenseBucket.nominal : expenseBucket.real
+      const incomeBucket = incomeSchedule.get(y) ?? { nominal: 0, real: 0 }
+      const otherIncome = valueUnits === \"nominal\" ? incomeBucket.nominal : incomeBucket.real
       const recurringIncome = y >= incomeStartYear ? incomeAmount : 0
       const netIncome = recurringIncome + otherIncome
       const cashFlow = basic + otherSpending - netIncome
