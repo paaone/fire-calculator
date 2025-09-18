@@ -17,6 +17,10 @@ export default function CashFlowTable({ rows, title, currencyCode = "USD" }: { r
   const currency = (n: number) => formatter.format(n)
 
   if (!rows?.length) return null
+
+  const hasOtherSpending = rows.some((row) => Math.abs(row.otherSpending) > 0.01)
+  const hasOtherIncome = rows.some((row) => Math.abs(row.otherIncome) > 0.01)
+
   return (
     <div className="panel">
       <div className="hstack" style={{ justifyContent: "space-between", marginBottom: 8 }}>
@@ -30,8 +34,8 @@ export default function CashFlowTable({ rows, title, currencyCode = "USD" }: { r
               <th>Starting Balance (Median)</th>
               <th>Starting Balance (10th %)</th>
               <th>Basic Spend / Save</th>
-              <th>Other Spending</th>
-              <th>Other Income</th>
+              {hasOtherSpending && <th>Other Spending</th>}
+              {hasOtherIncome && <th>Other Income</th>}
               <th>Net Cash Flow</th>
             </tr>
           </thead>
@@ -44,8 +48,8 @@ export default function CashFlowTable({ rows, title, currencyCode = "USD" }: { r
                   <td>{currency(r.startMedian)}</td>
                   <td>{currency(r.startP10)}</td>
                   <td>{currency(r.basic)}</td>
-                  <td>{currency(r.otherSpending)}</td>
-                  <td>{currency(r.otherIncome)}</td>
+                  {hasOtherSpending && <td>{currency(r.otherSpending)}</td>}
+                  {hasOtherIncome && <td>{currency(r.otherIncome)}</td>}
                   <td>{currency(r.cashFlow)}</td>
                 </tr>
               )
