@@ -17,6 +17,8 @@ import {
 } from "../lib/planning"
 
 const SPENDING_CATEGORY_DATALIST_ID = "spending-category-options"
+const FUTURE_EXPENSE_DATALIST_ID = "future-expense-options"
+const FUTURE_INCOME_DATALIST_ID = "future-income-options"
 const healthKeywords = /health|medical/i
 const educationKeywords = /educ/i
 
@@ -26,6 +28,30 @@ function inferCategoryFromLabel(label: string, fallback: SpendingCategoryPlan["c
   if (preset) return preset.key
   if (healthKeywords.test(trimmed)) return "healthcare"
   if (educationKeywords.test(trimmed)) return "education"
+  return fallback
+}
+
+function inferExpenseCategoryFromLabel(label: string, fallback: FutureExpensePlan["category"]): FutureExpensePlan["category"] {
+  const normalized = label.trim().toLowerCase()
+  const option = FUTURE_EXPENSE_OPTIONS.find((item) => item.label.toLowerCase() === normalized)
+  if (option) return option.key
+  if (normalized.includes('travel')) return 'travel'
+  if (normalized.includes('health')) return 'healthcare'
+  if (normalized.includes('educ')) return 'education'
+  if (normalized.includes('home') || normalized.includes('house')) return 'home_project'
+  if (normalized.includes('vehicle') || normalized.includes('car')) return 'vehicle'
+  return fallback
+}
+
+function inferIncomeCategoryFromLabel(label: string, fallback: FutureIncomePlan["category"]): FutureIncomePlan["category"] {
+  const normalized = label.trim().toLowerCase()
+  const option = FUTURE_INCOME_OPTIONS.find((item) => item.label.toLowerCase() === normalized)
+  if (option) return option.key
+  if (normalized.includes('pension')) return 'pension'
+  if (normalized.includes('rental')) return 'rental'
+  if (normalized.includes('social')) return 'social_security'
+  if (normalized.includes('inherit')) return 'inheritance'
+  if (normalized.includes('business')) return 'business'
   return fallback
 }
 
@@ -163,6 +189,8 @@ export default function Inputs({
       ),
     [spendingCategories],
   )
+  const expenseLabelOptions = useMemo(() => FUTURE_EXPENSE_OPTIONS.map((option) => option.label), [])
+  const incomeLabelOptions = useMemo(() => FUTURE_INCOME_OPTIONS.map((option) => option.label), [])
   const totalBreakdown = totalSpendingFromCategories(spendingCategories)
   const breakdownMatchesSpend = Math.abs(totalBreakdown - spend) < 0.5
 
@@ -215,13 +243,23 @@ export default function Inputs({
     onFutureExpensesChange(next)
   }
 
-  const handleExpenseCategory = (index: number, category: FutureExpensePlan["category"]) => {
-    const option = FUTURE_EXPENSE_OPTIONS.find((item) => item.key === category)
-    handleExpenseChange(index, {
-      category,
-      label: option?.label ?? futureExpenses[index]?.label ?? "Goal",
-      inflation: suggestedInflationForExpense(category),
-    })
+  const matchExpenseOption = (label: string) => {
+    const normalized = label.trim().toLowerCase()
+    return FUTURE_EXPENSE_OPTIONS.find((option) => option.label.toLowerCase() === normalized)
+  }
+
+  const handleExpenseLabelChange = (index: number, nextLabel: string) => {
+    const option = matchExpenseOption(nextLabel)
+    const current = futureExpenses[index]
+    const inferredCategory = inferExpenseCategoryFromLabel(nextLabel, current?.category ?? "other")
+    const update: Partial<FutureExpensePlan> = { label: nextLabel, category: inferredCategory }
+    if (option) {
+      update.category = option.key
+      update.inflation = option.defaultInflation
+    } else if (!nextLabel.trim()) {
+      update.category = current?.category ?? "other"
+    }
+    handleExpenseChange(index, update)
   }
 
   const handleAddExpense = () => {
@@ -250,13 +288,23 @@ export default function Inputs({
     onFutureIncomesChange(next)
   }
 
-  const handleIncomeCategory = (index: number, category: FutureIncomePlan["category"]) => {
-    const option = FUTURE_INCOME_OPTIONS.find((item) => item.key === category)
-    handleIncomeChange(index, {
-      category,
-      label: option?.label ?? futureIncomes[index]?.label ?? "Income",
-      inflation: suggestedInflationForIncome(category),
-    })
+  const matchIncomeOption = (label: string) => {
+    const normalized = label.trim().toLowerCase()
+    return FUTURE_INCOME_OPTIONS.find((option) => option.label.toLowerCase() === normalized)
+  }
+
+  const handleIncomeLabelChange = (index: number, nextLabel: string) => {
+    const option = matchIncomeOption(nextLabel)
+    const current = futureIncomes[index]
+    const inferredCategory = inferIncomeCategoryFromLabel(nextLabel, current?.category ?? "other")
+    const update: Partial<FutureIncomePlan> = { label: nextLabel, category: inferredCategory }
+    if (option) {
+      update.category = option.key
+      update.inflation = option.defaultInflation
+    } else if (!nextLabel.trim()) {
+      update.category = current?.category ?? "other"
+    }
+    handleIncomeChange(index, update)
   }
 
   const handleAddIncome = () => {
@@ -436,8 +484,7 @@ export default function Inputs({
       <div className="future-events">
         <div className="future-grid">
           <div className="future-grid__row future-grid__row--header">
-            <span>Type</span>
-            <span>Label</span>
+            <span>Label / Type</span>
             <span>Amount</span>
             <span>Starts (yrs)</span>
             <span>Frequency</span>
@@ -449,24 +496,13 @@ export default function Inputs({
             const isRecurring = item.frequency === "recurring"
             return (
               <div className="future-grid__row" key={item.id}>
-                <select
-                  className="select"
-                  aria-label="Expense type"
-                  value={item.category}
-                  onChange={(e) => handleExpenseCategory(idx, e.target.value as FutureExpensePlan["category"])}
-                >
-                  {FUTURE_EXPENSE_OPTIONS.map((option) => (
-                    <option key={option.key} value={option.key}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
                 <input
                   className="input"
                   type="text"
+                  list={FUTURE_EXPENSE_DATALIST_ID}
                   aria-label="Expense label"
                   value={item.label}
-                  onChange={(e) => handleExpenseChange(idx, { label: e.target.value })}
+                  onChange={(e) => handleExpenseLabelChange(idx, e.target.value)}
                 />
                 <CurrencyInput value={item.amount} onChange={(value) => handleExpenseChange(idx, { amount: value })} currency={currencyCode} />
                 <input
@@ -527,6 +563,11 @@ export default function Inputs({
             Add goal or milestone
           </button>
         </div>
+        <datalist id={FUTURE_EXPENSE_DATALIST_ID}>
+          {expenseLabelOptions.map((option) => (
+            <option key={option} value={option} />
+          ))}
+        </datalist>
       </div>
       <div className="divider" />
 
@@ -546,35 +587,42 @@ export default function Inputs({
       </div>
 
       <Accordion title="Additional income sources">
-        <div className="vstack" style={{ gap: 12 }}>
-          {futureIncomes.map((item, idx) => (
-            <div className="row" key={item.id}>
-              <div>
-                <FieldHeader label="Type" />
-                <select className="select" value={item.category} onChange={(e) => handleIncomeCategory(idx, e.target.value as FutureIncomePlan["category"]) }>
-                  {FUTURE_INCOME_OPTIONS.map((option) => (
-                    <option key={option.key} value={option.key}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <FieldHeader label="Label" />
-                <input className="input" type="text" value={item.label} onChange={(e) => handleIncomeChange(idx, { label: e.target.value })} />
-              </div>
-              <div>
-                <FieldHeader label="Amount" />
+        <div className="income-grid">
+          <div className="income-grid__row income-grid__row--header">
+            <span>Label / Type</span>
+            <span>Amount</span>
+            <span>Starts (yrs)</span>
+            <span>Frequency</span>
+            <span>Years</span>
+            <span>Inflation %</span>
+            <span />
+          </div>
+          {futureIncomes.map((item, idx) => {
+            const isRecurring = item.frequency === "recurring"
+            return (
+              <div className="income-grid__row" key={item.id}>
+                <input
+                  className="input"
+                  type="text"
+                  list={FUTURE_INCOME_DATALIST_ID}
+                  aria-label="Income label"
+                  value={item.label}
+                  onChange={(e) => handleIncomeLabelChange(idx, e.target.value)}
+                />
                 <CurrencyInput value={item.amount} onChange={(value) => handleIncomeChange(idx, { amount: value })} currency={currencyCode} />
-              </div>
-              <div>
-                <FieldHeader label="Starts in year" />
-                <input className="input" type="number" min={0} max={60} step={1} value={item.startYear} onChange={(e) => handleIncomeChange(idx, { startYear: Number(e.target.value) })} />
-              </div>
-              <div>
-                <FieldHeader label="Frequency" />
+                <input
+                  className="input"
+                  type="number"
+                  min={0}
+                  max={60}
+                  step={1}
+                  aria-label="Income start year"
+                  value={item.startYear}
+                  onChange={(e) => handleIncomeChange(idx, { startYear: Number(e.target.value) })}
+                />
                 <select
                   className="select"
+                  aria-label="Income frequency"
                   value={item.frequency}
                   onChange={(e) => handleIncomeChange(idx, { frequency: e.target.value as FutureIncomePlan["frequency"], years: e.target.value === "recurring" ? item.years || 30 : 1 })}
                 >
@@ -584,28 +632,47 @@ export default function Inputs({
                     </option>
                   ))}
                 </select>
-              </div>
-              {item.frequency === "recurring" && (
-                <div>
-                  <FieldHeader label="Years" />
-                  <input className="input" type="number" min={1} max={60} step={1} value={item.years} onChange={(e) => handleIncomeChange(idx, { years: Number(e.target.value) })} />
-                </div>
-              )}
-              <div>
-                <FieldHeader label="Inflation %" />
-                <input className="input" type="number" min={0} max={10} step={0.1} value={item.inflation} onChange={(e) => handleIncomeChange(idx, { inflation: Number(e.target.value) })} />
-              </div>
-              <div className="vstack" style={{ justifyContent: "flex-end" }}>
+                {isRecurring ? (
+                  <input
+                    className="input"
+                    type="number"
+                    min={1}
+                    max={60}
+                    step={1}
+                    aria-label="Income duration"
+                    value={item.years}
+                    onChange={(e) => handleIncomeChange(idx, { years: Number(e.target.value) })}
+                  />
+                ) : (
+                  <span className="income-grid__muted">-</span>
+                )}
+                <input
+                  className="input"
+                  type="number"
+                  min={0}
+                  max={10}
+                  step={0.1}
+                  aria-label="Income inflation percent"
+                  value={item.inflation}
+                  onChange={(e) => handleIncomeChange(idx, { inflation: Number(e.target.value) })}
+                />
                 <button className="btn btn-secondary btn-sm" type="button" onClick={() => handleRemoveIncome(idx)}>
                   Remove
                 </button>
               </div>
-            </div>
-          ))}
+            )
+          })}
+        </div>
+        <div className="income-actions">
           <button className="btn btn-secondary btn-sm" type="button" onClick={handleAddIncome}>
             Add income stream
           </button>
         </div>
+        <datalist id={FUTURE_INCOME_DATALIST_ID}>
+          {incomeLabelOptions.map((option) => (
+            <option key={option} value={option} />
+          ))}
+        </datalist>
       </Accordion>
 
       <div className="divider" />
@@ -623,6 +690,11 @@ export default function Inputs({
           <button type="button" className={strategy === "guardrails" ? "active" : ""} onClick={() => onStrategy("guardrails")}>
             Guardrails
           </button>
+        </div>
+        <div className="withdrawal-explainer">
+          <p><strong>Fixed:</strong> Keeps withdrawals level in today's dollars. Example: on a $1,000,000 nest egg with a 4% target you withdraw $40,000 this year and adjust that amount only for inflation.</p>
+          <p><strong>Variable %:</strong> Draws a set percentage of whatever the portfolio is worth each year. If you withdraw 4% from $1,000,000 ($40,000) and markets drop to $800,000, next year's withdrawal becomes $32,000.</p>
+          <p><strong>Guardrails:</strong> Starts at your target withdrawal but increases or decreases it when the withdrawal rate drifts outside your guard band. For example, with a 4% goal and a +/-20% band you would raise spending if markets surge and trim it if the portfolio shrinks too far.</p>
         </div>
       </div>
 

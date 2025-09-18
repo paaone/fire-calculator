@@ -1,5 +1,5 @@
 import { useMemo } from "react"
-import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, ReferenceLine } from "recharts"
+import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, ReferenceLine, ReferenceArea } from "recharts"
 
 export interface SeriesPoint {
   month: number
@@ -8,6 +8,13 @@ export interface SeriesPoint {
   p50: number
   p90: number
   band: number
+}
+
+export type ChartPhase = {
+  start: number
+  end?: number
+  color: string
+  label?: string
 }
 
 export type ChartMilestone = {
@@ -22,9 +29,10 @@ type Props = {
   title?: string
   currencyCode?: string
   milestones?: ChartMilestone[]
+  phases?: ChartPhase[]
 }
 
-export default function ProjectionChart({ data, title, currencyCode = "USD", milestones = [] }: Props) {
+export default function ProjectionChart({ data, title, currencyCode = "USD", milestones = [], phases = [] }: Props) {
   const locale = currencyCode === "INR" ? "en-IN" : undefined
   const currencyFormatter = useMemo(
     () => new Intl.NumberFormat(locale ?? undefined, { style: "currency", currency: currencyCode, maximumFractionDigits: 0 }),
@@ -64,6 +72,19 @@ export default function ProjectionChart({ data, title, currencyCode = "USD", mil
               axisLine={false}
             />
             <Tooltip content={<TooltipContent format={currencyFormatter.format} />} cursor={{ stroke: "#94a3b8", strokeDasharray: "4 4" }} />
+            {phases.map((phase) => {
+              const endYear = phase.end ?? (data[data.length - 1]?.year ?? phase.start)
+              return (
+                <ReferenceArea
+                  key={`${phase.start}-${phase.end ?? 'end'}-${phase.label ?? 'phase'}`}
+                  x1={phase.start}
+                  x2={endYear}
+                  strokeOpacity={0}
+                  fill={phase.color}
+                  label={phase.label ? { value: phase.label, position: "insideTopLeft", fill: "#64748b", fontSize: 12, offset: 10 } : undefined}
+                />
+              )
+            })}
             {milestones.map((marker) => {
               const lineStroke = marker.drawLine ? "#94a3b8" : "rgba(148, 163, 184, 0.001)"
               const dash = marker.drawLine ? "4 3" : undefined

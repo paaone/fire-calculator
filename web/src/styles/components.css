@@ -461,7 +461,7 @@
 .category-breakdown {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
 .category-breakdown__totals {
@@ -473,16 +473,17 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  max-height: 240px;
+  max-height: 220px;
   overflow-y: auto;
   padding-right: 4px;
 }
 
 .category-grid__row {
   display: grid;
-  grid-template-columns: 1.4fr 1fr 0.6fr auto;
+  grid-template-columns: 1.3fr 0.9fr 0.6fr auto;
   gap: 6px;
   align-items: center;
+  font-size: 13px;
 }
 
 .category-grid__row--header {
@@ -498,8 +499,8 @@
 
 .category-grid__row .input,
 .category-grid__row .select {
-  font-size: 14px;
-  padding: 8px 10px;
+  font-size: 13px;
+  padding: 6px 10px;
 }
 
 .category-grid__row .btn {
@@ -517,22 +518,22 @@
 .future-events {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
 .future-grid {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  max-height: 260px;
+  gap: 6px;
+  max-height: 240px;
   overflow-y: auto;
   padding-right: 4px;
 }
 
 .future-grid__row {
   display: grid;
-  grid-template-columns: 1fr 1.1fr 0.8fr 0.6fr 0.8fr 0.6fr 0.6fr auto;
-  gap: 8px;
+  grid-template-columns: 1.4fr 0.9fr 0.7fr 0.8fr 0.6fr 0.6fr auto;
+  gap: 6px;
   align-items: center;
 }
 
@@ -549,8 +550,8 @@
 
 .future-grid__row .input,
 .future-grid__row .select {
-  font-size: 14px;
-  padding: 8px 10px;
+  font-size: 13px;
+  padding: 6px 10px;
 }
 
 .future-grid__muted {
@@ -569,6 +570,69 @@
   justify-content: flex-end;
 }
 
+.income-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 240px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.income-grid__row {
+  display: grid;
+  grid-template-columns: 1.4fr 0.9fr 0.7fr 0.8fr 0.6fr 0.6fr auto;
+  gap: 6px;
+  align-items: center;
+}
+
+.income-grid__row--header {
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.income-grid__row--header span:last-child {
+  justify-self: end;
+}
+
+.income-grid__row .input,
+.income-grid__row .select {
+  font-size: 13px;
+  padding: 6px 10px;
+}
+
+.income-grid__muted {
+  color: var(--muted);
+  font-size: 13px;
+  text-align: center;
+}
+
+.income-grid__row .btn {
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
+.income-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 4px;
+}
+
+.withdrawal-explainer {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.withdrawal-explainer strong {
+  color: var(--text);
+}
+
 @media (max-width: 640px) {
   .category-grid__row {
     grid-template-columns: 1fr;
@@ -582,13 +646,16 @@
   .category-actions {
     flex-direction: column;
   }
-  .future-grid__row {
-    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  .future-grid__row,
+  .income-grid__row {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   }
-  .future-grid__row--header {
+  .future-grid__row--header,
+  .income-grid__row--header {
     display: none;
   }
-  .future-grid__row .btn {
+  .future-grid__row .btn,
+  .income-grid__row .btn {
     justify-self: start;
   }
 }

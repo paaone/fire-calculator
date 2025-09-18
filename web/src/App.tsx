@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
-import ProjectionChart, { SeriesPoint, ChartMilestone } from "./components/ProjectionChart"
+import ProjectionChart, { SeriesPoint, ChartMilestone, ChartPhase } from "./components/ProjectionChart"
 import CashFlowTable, { CashFlowRow } from "./components/CashFlowTable"
 import Histogram from "./components/Histogram"
 import Inputs, { StrategyName } from "./components/Inputs"
@@ -41,20 +41,20 @@ const EXPENSE_EMOJI: Record<FutureExpensePlan["category"], string> = {
   home_project: String.fromCodePoint(0x1F3E0),
   vehicle: String.fromCodePoint(0x1F697),
   education: String.fromCodePoint(0x1F393),
-  healthcare: `${String.fromCodePoint(0x2695)}️`,
-  travel: `${String.fromCodePoint(0x2708)}️`,
+  healthcare: String.fromCodePoint(0x2695, 0xFE0F),
+  travel: String.fromCodePoint(0x2708, 0xFE0F),
   wedding: String.fromCodePoint(0x1F48D),
   other: STAR_EMOJI,
 }
 
 const EXPENSE_LABEL_FALLBACK: Record<FutureExpensePlan["category"], string> = {
-  home_project: "Home milestone",
-  vehicle: "Vehicle purchase",
-  education: "Education milestone",
-  healthcare: "Healthcare milestone",
-  travel: "Travel splurge",
-  wedding: "Celebration",
-  other: "Future expense",
+  home_project: "Home Buying / Renovation",
+  vehicle: "Vehicle Purchase / Lease",
+  education: "Education",
+  healthcare: "Healthcare",
+  travel: "Travel Splurge",
+  wedding: "Wedding / Celebration",
+  other: "Custom Goal",
 }
 
 function expenseEmoji(category: FutureExpensePlan["category"]): string {
@@ -385,6 +385,21 @@ export default function App() {
   }
 
   const baseYear = new Date().getFullYear()
+
+  const chartPhases = useMemo<ChartPhase[]>(() => {
+    const phases: ChartPhase[] = []
+    const horizonYear = baseYear + Math.max(0, Math.round(years))
+    if (stillWorking) {
+      const retireYear = baseYear + Math.max(0, Math.round(startDelayYears))
+      if (retireYear > baseYear) {
+        phases.push({ start: baseYear, end: retireYear, color: 'rgba(37, 99, 235, 0.08)', label: 'Working years' })
+      }
+      phases.push({ start: retireYear, end: horizonYear, color: 'rgba(16, 185, 129, 0.08)', label: 'Retirement years' })
+    } else {
+      phases.push({ start: baseYear, end: horizonYear, color: 'rgba(16, 185, 129, 0.08)', label: 'Retirement years' })
+    }
+    return phases.filter((phase) => Number.isFinite(phase.start) && (phase.end === undefined || Number.isFinite(phase.end)))
+  }, [stillWorking, startDelayYears, years, baseYear])
 
   const chartMilestones = useMemo<ChartMilestone[]>(() => {
     const map = new Map<number, ChartMilestone>()
@@ -799,9 +814,9 @@ export default function App() {
                   <strong>You're FI-ready based on history.</strong> Success rate is at least 80%. Explore the range below.
                 </div>
               </div>
-              <ProjectionChart data={toSeriesWithUnits(hist)} title={`Historical projection (${unitLabel})`} currencyCode={currencyCode} milestones={chartMilestones} />
+              <ProjectionChart data={toSeriesWithUnits(hist)} title={`Historical projection (${unitLabel})`} currencyCode={currencyCode} milestones={chartMilestones} phases={chartPhases} />
               <CashFlowTable rows={toCashFlowRows(hist)} title={`Detailed cashflow table (${unitLabel})`} currencyCode={currencyCode} />
-              <ProjectionChart data={toSeriesWithUnits(mc)} title={`Monte Carlo projection (${unitLabel})`} currencyCode={currencyCode} milestones={chartMilestones} />
+              <ProjectionChart data={toSeriesWithUnits(mc)} title={`Monte Carlo projection (${unitLabel})`} currencyCode={currencyCode} milestones={chartMilestones} phases={chartPhases} />
               <Histogram
                 values={valueUnits === "nominal" ? hist.ending_balances.map((v) => v * Math.pow(1 + inflationPct / 100, years)) : hist.ending_balances}
                 title={`Historical ending balances (${unitLabel})`}

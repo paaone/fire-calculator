@@ -76,13 +76,13 @@ export const FUTURE_EXPENSE_OPTIONS: Array<{
   label: string
   defaultInflation: number
 }> = [
-  { key: "home_project", label: "Home renovation / down payment", defaultInflation: 2.8 },
-  { key: "vehicle", label: "Vehicle purchase", defaultInflation: 3 },
+  { key: "home_project", label: "Home Buying / Renovation", defaultInflation: 2.8 },
+  { key: "vehicle", label: "Vehicle Purchase / Lease", defaultInflation: 3 },
   { key: "education", label: "Education", defaultInflation: 5 },
-  { key: "healthcare", label: "Healthcare milestone", defaultInflation: 4.5 },
-  { key: "travel", label: "Travel splurge", defaultInflation: 3 },
-  { key: "wedding", label: "Wedding / celebration", defaultInflation: 3.2 },
-  { key: "other", label: "Custom goal", defaultInflation: 2.5 },
+  { key: "healthcare", label: "Healthcare", defaultInflation: 4.5 },
+  { key: "travel", label: "Travel Splurge", defaultInflation: 3 },
+  { key: "wedding", label: "Wedding / Celebration", defaultInflation: 3.2 },
+  { key: "other", label: "Custom Goal", defaultInflation: 2.5 },
 ]
 
 export const FUTURE_INCOME_OPTIONS: Array<{
