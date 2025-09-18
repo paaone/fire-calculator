@@ -327,6 +327,52 @@ export default function App() {
     return rows
   }
 
+  const applyPreset = useCallback((name: "lean" | "baseline" | "fat") => {
+    if (name === "lean") {
+      setInitial(500_000)
+      setSpend(25_000)
+      setYears(30)
+      setStillWorking(true)
+      setAnnualContrib(15_000)
+      setExpectedRealReturn(5)
+      setStrategyName("fixed")
+      setIncomeAmount(0)
+      setIncomeStartYear(0)
+      setStartDelayYears(0)
+      setOtherIncomes([])
+      setExpenses([])
+      setValueUnits("real")
+    } else if (name === "baseline") {
+      setInitial(1_000_000)
+      setSpend(40_000)
+      setYears(30)
+      setStillWorking(true)
+      setAnnualContrib(20_000)
+      setExpectedRealReturn(5)
+      setStrategyName("fixed")
+      setIncomeAmount(0)
+      setIncomeStartYear(0)
+      setStartDelayYears(0)
+      setOtherIncomes([])
+      setExpenses([])
+      setValueUnits("real")
+    } else {
+      setInitial(2_000_000)
+      setSpend(100_000)
+      setYears(35)
+      setStillWorking(false)
+      setAnnualContrib(0)
+      setExpectedRealReturn(4)
+      setStrategyName("fixed")
+      setIncomeAmount(0)
+      setIncomeStartYear(0)
+      setStartDelayYears(0)
+      setOtherIncomes([])
+      setExpenses([])
+      setValueUnits("real")
+    }
+  }, [])
+
   const fireTarget = fireTargetFromSpend(spend, 0.04)
   const estimatedYearsToFI = computeYearsToFI({
     balance: initial,
@@ -514,7 +560,7 @@ export default function App() {
               </button>
             </div>
             <div className="highlights__meta">
-              Market data refreshes automatically. Source: {marketMeta?.source}. Coverage {marketMeta?.coverage.start} ? {marketMeta?.coverage.end} ({marketMeta?.coverage.months} months).
+              Market data refreshes automatically. Source: {marketMeta?.source}. coverage {marketMeta?.coverage.start} ? {marketMeta?.coverage.end} ({marketMeta?.coverage.months} months).
             </div>
           </div>
 
@@ -577,3 +623,6 @@ export default function App() {
     </div>
   )
 }
+
+
+
