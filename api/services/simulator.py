@@ -112,6 +112,12 @@ def simulate_historical(
 ) -> Dict:
     months = (start_delay_years + years) * 12
     r = returns.values.astype(float)
+    if len(r) < months:
+        total_years = len(r) // 12
+        raise ValueError(
+            f"Not enough historical data to simulate {years} years for this market. "
+            f"Only {max(total_years, 0)} years are available. Reduce the horizon or start delay."
+        )
     windows = []
     endings = []
     for start in range(0, len(r) - months + 1):
@@ -208,3 +214,7 @@ def simulate_monte_carlo(
         "quantiles": {"p10": q10, "p50": q50, "p90": q90},
         "sample_path": sample_path,
     }
+
+
+
+

@@ -8,7 +8,8 @@ function parseCurrency(input: string): number | null {
 }
 
 export default function CurrencyInput({ value, onChange, placeholder, currency = "USD" }: { value: number; onChange: (v: number) => void; placeholder?: string; currency?: string }) {
-  const formatter = useMemo(() => new Intl.NumberFormat(undefined, { style: "currency", currency, maximumFractionDigits: 0 }), [currency])
+  const locale = currency === "INR" ? "en-IN" : undefined
+  const formatter = useMemo(() => new Intl.NumberFormat(locale ?? undefined, { style: "currency", currency, maximumFractionDigits: 0 }), [currency, locale])
 
   const formatCurrency = (n: number | null) => {
     if (n === null || Number.isNaN(n)) return ""

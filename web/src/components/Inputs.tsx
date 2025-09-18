@@ -1,4 +1,3 @@
-import InfoTip from "./InfoTip"
 import Accordion from "./Accordion"
 import CurrencyInput from "./CurrencyInput"
 
@@ -50,6 +49,15 @@ type Props = {
   running: boolean
 }
 
+function FieldHeader({ label, help }: { label: string; help?: string }) {
+  return (
+    <div className="field-header">
+      <span className="label">{label}</span>
+      {help && <span className="label-help">{help}</span>}
+    </div>
+  )
+}
+
 export default function Inputs(props: Props) {
   const {
     market,
@@ -86,8 +94,6 @@ export default function Inputs(props: Props) {
     inflationPct = 3,
     onInflationPct,
     onApplyPreset,
-    assets = [],
-    onAssetsChange,
     otherIncomes = [],
     onOtherIncomesChange,
     expenses = [],
@@ -116,7 +122,7 @@ export default function Inputs(props: Props) {
       </div>
 
       <div className="plan-card__market">
-        <label className="label">Market focus</label>
+        <span className="label">Market focus</span>
         <div className="segmented segmented-lg">
           <button
             type="button"
@@ -135,31 +141,31 @@ export default function Inputs(props: Props) {
         </div>
       </div>
 
-      <label className="label">Initial portfolio</label>
+      <FieldHeader label="Initial portfolio" help="Starting portfolio in today’s currency." />
       <CurrencyInput value={initial} onChange={onInitial} currency={currencyCode} />
 
-      <label className="label">Annual spending <InfoTip title="Annual spending (real)">Amount you plan to spend per year, in today&apos;s currency. Historical returns are inflation-adjusted, so this is real spending power.</InfoTip></label>
+      <FieldHeader label="Annual spending" help="Amount you plan to spend per year in today’s currency." />
       <CurrencyInput value={spend} onChange={onSpend} currency={currencyCode} />
 
       <div>
-        <label className="label">Inflation (expected %)</label>
+        <FieldHeader label="Inflation" help="Expected annual inflation used for nominal projections." />
         <input className="input" type="number" min={0} max={15} step={0.1} value={inflationPct} onChange={(e) => onInflationPct?.(Number(e.target.value))} />
       </div>
 
       <div className="row">
         <div>
-          <label className="label">Working status <InfoTip title="Working status">If you are still contributing, we&apos;ll project when you reach FI with the expected real return.</InfoTip></label>
+          <FieldHeader label="Working status" help="If you are still contributing, we’ll project when you reach FI with the expected real return." />
           <select className="select" value={stillWorking ? "yes" : "no"} onChange={(e) => onStillWorking(e.target.value === "yes")}>
             <option value="yes">Still working</option>
             <option value="no">Already retired</option>
           </select>
         </div>
         <div>
-          <label className="label">Years to fund <InfoTip title="Retirement length">How long the plan needs to last.</InfoTip></label>
+          <FieldHeader label="Years to fund" help="How long the plan needs to last." />
           <input className="input" type="number" value={years} onChange={(e) => onYears(Number(e.target.value))} min={1} max={60} step={1} />
         </div>
         <div>
-          <label className="label">Current age</label>
+          <FieldHeader label="Current age" />
           <input className="input" type="number" min={0} max={120} step={1} value={currentAge} onChange={(e) => onCurrentAge?.(Number(e.target.value))} />
         </div>
       </div>
@@ -168,15 +174,15 @@ export default function Inputs(props: Props) {
         <>
           <div className="row">
             <div>
-              <label className="label">Annual savings (real) <InfoTip title="Annual contributions">Amount added to the portfolio each year until retirement.</InfoTip></label>
+              <FieldHeader label="Annual savings" help="Amount added to the portfolio each year until retirement." />
               <CurrencyInput value={annualContrib} onChange={onAnnualContrib} currency={currencyCode} />
             </div>
             <div>
-              <label className="label">Expected real return (pre-retirement)</label>
+              <FieldHeader label="Expected real return (pre-retirement)" />
               <input className="input" type="number" value={expectedRealReturn} onChange={(e) => onExpectedRealReturn(Number(e.target.value))} min={0} max={15} step={0.1} />
             </div>
             <div>
-              <label className="label">Years until retirement</label>
+              <FieldHeader label="Years until retirement" />
               <input className="input" type="number" min={0} max={40} step={1} value={startDelayYears} onChange={(e) => onStartDelay(Number(e.target.value))} />
             </div>
           </div>
@@ -184,7 +190,7 @@ export default function Inputs(props: Props) {
       )}
 
       <div>
-        <label className="label">Withdrawal style</label>
+        <span className="label">Withdrawal style</span>
         <div className="segmented">
           <button type="button" className={strategy === "fixed" ? "active" : ""} onClick={() => onStrategy("fixed")}>
             Fixed
@@ -200,7 +206,7 @@ export default function Inputs(props: Props) {
 
       {strategy === "variable_percentage" && (
         <div>
-          <label className="label">Variable percentage (annual % of portfolio)</label>
+          <FieldHeader label="Variable percentage" help="Annual percentage of portfolio withdrawn." />
           <input className="input" type="number" min={1} max={10} step={0.1} value={vpwPct} onChange={(e) => onVpwPct(Number(e.target.value))} />
         </div>
       )}
@@ -208,11 +214,11 @@ export default function Inputs(props: Props) {
       {strategy === "guardrails" && (
         <div className="row">
           <div>
-            <label className="label">Guard band (±% of initial WR)</label>
+            <FieldHeader label="Guard band" help="Width of the acceptable withdrawal range based on the initial withdrawal rate." />
             <input className="input" type="number" min={5} max={50} step={1} value={guardBand} onChange={(e) => onGuardBand(Number(e.target.value))} />
           </div>
           <div>
-            <label className="label">Adjust step (% change)</label>
+            <FieldHeader label="Adjust step" help="Percentage adjustment applied when breaching the guard band." />
             <input className="input" type="number" min={5} max={30} step={1} value={guardStep} onChange={(e) => onGuardStep(Number(e.target.value))} />
           </div>
         </div>
@@ -223,17 +229,17 @@ export default function Inputs(props: Props) {
       <Accordion title="Income in retirement">
         <div className="row">
           <div>
-            <label className="label">Annual income (real)</label>
+            <FieldHeader label="Annual income" help="Recurring income that offsets withdrawals once retirement begins." />
             <CurrencyInput value={incomeAmount} onChange={onIncomeAmount} currency={currencyCode} />
           </div>
           <div>
-            <label className="label">Starts in retirement year</label>
+            <FieldHeader label="Starts in retirement year" />
             <input className="input" type="number" value={incomeStartYear} onChange={(e) => onIncomeStartYear(Number(e.target.value))} min={0} max={60} step={1} />
           </div>
         </div>
         {onOtherIncomesChange && (
           <div className="vstack">
-            <div className="label">Additional income streams</div>
+            <span className="label">Additional income streams</span>
             {otherIncomes.map((row, idx) => (
               <div className="row" key={`income-${idx}`}>
                 <CurrencyInput value={row.amount} onChange={(v) => {
@@ -260,7 +266,7 @@ export default function Inputs(props: Props) {
       {onExpensesChange && (
         <Accordion title="One-time expenses (years from now)">
           <div className="vstack">
-            <div className="help">Model large purchases such as a home down payment. Amounts are expressed in today&apos;s currency.</div>
+            <div className="help">Model large purchases such as a home down payment. Amounts are expressed in today’s currency.</div>
             {expenses.map((row, idx) => (
               <div className="row" key={`expense-${idx}`}>
                 <CurrencyInput value={row.amount} onChange={(v) => {
@@ -287,10 +293,11 @@ export default function Inputs(props: Props) {
       <div className="divider" />
 
       <button className="btn btn-primary btn-lg" onClick={onRun} disabled={running}>
-        {running ? "Running…" : "Run simulation"}
+        {running ? "Running..." : "Run simulation"}
       </button>
 
       <div className="help">Runs every historical sequence and a Monte Carlo view for the selected market.</div>
     </div>
   )
 }
+

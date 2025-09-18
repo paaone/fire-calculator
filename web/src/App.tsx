@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import ProjectionChart, { SeriesPoint } from "./components/ProjectionChart"
 import CashFlowTable, { CashFlowRow } from "./components/CashFlowTable"
@@ -34,13 +34,18 @@ export default function App() {
   const [valueUnits, setValueUnits] = useState<"real" | "nominal">("real")
   const [currentAge, setCurrentAge] = useState<number>(0)
 
+  const [hasHydrated, setHasHydrated] = useState(false)
+  const skipNextMarketPreset = useRef(true)
+  const prevMarket = useRef<MarketCode>(market)
+
   const currencyCode = market === "india" ? "INR" : "USD"
+  const locale = market === "india" ? "en-IN" : undefined
   const currencyFormatter = useMemo(
-    () => new Intl.NumberFormat(undefined, { style: "currency", currency: currencyCode, maximumFractionDigits: 0 }),
-    [currencyCode],
+    () => new Intl.NumberFormat(locale ?? undefined, { style: "currency", currency: currencyCode, maximumFractionDigits: 0 }),
+    [currencyCode, locale],
   )
   const formatCurrency = useCallback((n: number) => currencyFormatter.format(n), [currencyFormatter])
-  const currencySymbol = currencyCode === "INR" ? "?" : "$"
+  const unitLabel = valueUnits === "real" ? `inflation-adjusted ${currencyCode}` : `actual ${currencyCode}`
 
   const strategy: Strategy = useMemo(() => {
     if (strategyName === "variable_percentage") return { type: "variable_percentage", percentage: vpwPct / 100 }
@@ -78,6 +83,7 @@ export default function App() {
 
   const loading = histQuery.isLoading || mcQuery.isLoading
   const error = histQuery.error || mcQuery.error
+  const errorMessage = error ? (error instanceof Error ? error.message : String(error)) : ""
   const hist = histQuery.data
   const mc = mcQuery.data
 
@@ -92,7 +98,6 @@ export default function App() {
       band: res.quantiles.p90[i] - res.quantiles.p10[i],
     }))
 
-  const unitLabel = valueUnits === "real" ? `inflation-adjusted ${currencySymbol}` : `actual ${currencySymbol}`
   const toSeriesWithUnits = (res: any): SeriesPoint[] => {
     const base = toSeries(res)
     if (valueUnits === "real") return base
@@ -239,7 +244,10 @@ export default function App() {
 
   useEffect(() => {
     const sp = new URLSearchParams(window.location.search)
-    if (!sp.size) return
+    if (!sp.size) {
+      setHasHydrated(true)
+      return
+    }
     const num = (k: string, d: number) => {
       const v = Number(sp.get(k))
       return Number.isNaN(v) ? d : v
@@ -247,7 +255,9 @@ export default function App() {
     const str = (k: string, d: string) => sp.get(k) ?? d
     const has = (k: string) => sp.has(k)
     const m = str("m", "us") as MarketCode
+    skipNextMarketPreset.current = true
     setMarket(m === "india" ? "india" : "us")
+    prevMarket.current = m === "india" ? "india" : "us"
     setInitial(num("i", 1_000_000))
     setSpend(num("s", 40_000))
     setYears(num("y", 30))
@@ -282,13 +292,57 @@ export default function App() {
       }
     }
     setView("results")
+    setHasHydrated(true)
   }, [])
+
+  useEffect(() => {
+    if (!hasHydrated) return
+    if (skipNextMarketPreset.current) {
+      skipNextMarketPreset.current = false
+      prevMarket.current = market
+      return
+    }
+    if (prevMarket.current === market) return
+    prevMarket.current = market
+    if (market === "india") {
+      setInitial(50_000_000)
+      setSpend(2_000_000)
+      setStillWorking(false)
+      setAnnualContrib(0)
+      setStartDelayYears(0)
+      setInflationPct(6)
+      setExpectedRealReturn(10)
+      setYears(16)
+      setIncomeAmount(0)
+      setIncomeStartYear(0)
+      setOtherIncomes([])
+      setExpenses([])
+    } else {
+      setInitial(1_000_000)
+      setSpend(40_000)
+      setStillWorking(true)
+      setAnnualContrib(0)
+      setStartDelayYears(0)
+      setInflationPct(3)
+      setExpectedRealReturn(5)
+      setYears(30)
+      setIncomeAmount(0)
+      setIncomeStartYear(0)
+      setOtherIncomes([])
+      setExpenses([])
+    }
+  }, [market, hasHydrated])
+
+  const handleMarketChange = (next: MarketCode) => {
+    skipNextMarketPreset.current = false
+    setMarket(next)
+  }
 
   if (view === "landing") {
     return (
       <Landing
         market={market}
-        onMarketChange={setMarket}
+        onMarketChange={handleMarketChange}
         currencyCode={currencyCode}
         initial={initial}
         onInitial={setInitial}
@@ -337,7 +391,7 @@ export default function App() {
         <aside>
           <Inputs
             market={market}
-            onMarketChange={setMarket}
+            onMarketChange={handleMarketChange}
             currencyCode={currencyCode}
             initial={initial}
             onInitial={setInitial}
@@ -382,8 +436,8 @@ export default function App() {
           />
         </aside>
         <main>
-          {error && (
-            <div className="panel panel-error">Error: {(error as any)?.message || String(error)}</div>
+          {errorMessage && (
+            <div className="panel panel-error">{errorMessage}</div>
           )}
 
           <div className="panel highlights">
@@ -403,7 +457,7 @@ export default function App() {
               </button>
             </div>
             <div className="highlights__meta">
-              Market data refreshes automatically. Currently using {market === "india" ? "NIFTY 50 + India CPI" : "Ken French CRSP + US CPI"}.
+              Market data refreshes automatically. Currently using {market === "india" ? "NIFTY 50 returns with India CPI" : "Ken French CRSP returns with US CPI"}.
             </div>
           </div>
 
@@ -424,11 +478,11 @@ export default function App() {
           <Accordion title="Advanced (Monte Carlo)" defaultOpen={false}>
             <div className="row">
               <div>
-                <label className="label">Simulated paths</label>
+                <span className="label">Simulated paths</span>
                 <input className="input" type="number" min={100} max={10000} step={100} value={nPaths} onChange={(e) => setNPaths(Number(e.target.value))} />
               </div>
               <div>
-                <label className="label">Block size (months)</label>
+                <span className="label">Block size (months)</span>
                 <input className="input" type="number" min={1} max={60} step={1} value={blockSize} onChange={(e) => setBlockSize(Number(e.target.value))} />
               </div>
             </div>
@@ -439,7 +493,7 @@ export default function App() {
               <div className="callout">
                 <div className="hstack" style={{ gap: 8 }}>
                   <FaCircleCheck color="#16a34a" />
-                  <strong>You&apos;re FI-ready based on history.</strong> Success rate is at least 80%. Explore the range below.
+                  <strong>You're FI-ready based on history.</strong> Success rate is at least 80%. Explore the range below.
                 </div>
               </div>
               <ProjectionChart data={toSeriesWithUnits(hist)} title={`Historical projection (${unitLabel})`} retireAtMonths={startDelayYears * 12} currencyCode={currencyCode} />
@@ -466,3 +520,4 @@ export default function App() {
     </div>
   )
 }
+

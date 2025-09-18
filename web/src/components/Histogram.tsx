@@ -9,19 +9,20 @@ type Props = {
 }
 
 export default function Histogram({ values, bins = 30, title, currencyCode = "USD" }: Props) {
+  const locale = currencyCode === "INR" ? "en-IN" : undefined
   const currencyFormatter = useMemo(
-    () => new Intl.NumberFormat(undefined, { style: "currency", currency: currencyCode, maximumFractionDigits: 0 }),
-    [currencyCode],
+    () => new Intl.NumberFormat(locale ?? undefined, { style: "currency", currency: currencyCode, maximumFractionDigits: 0 }),
+    [currencyCode, locale],
   )
   const axisFormatter = useMemo(
     () =>
-      new Intl.NumberFormat(undefined, {
+      new Intl.NumberFormat(locale ?? undefined, {
         style: "currency",
         currency: currencyCode,
         notation: "compact",
         maximumFractionDigits: 1,
       }),
-    [currencyCode],
+    [currencyCode, locale],
   )
 
   if (!values.length) return null

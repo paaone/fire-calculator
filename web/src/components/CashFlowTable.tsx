@@ -12,7 +12,8 @@ export interface CashFlowRow {
 }
 
 export default function CashFlowTable({ rows, title, currencyCode = "USD" }: { rows: CashFlowRow[]; title?: string; currencyCode?: string }) {
-  const formatter = useMemo(() => new Intl.NumberFormat(undefined, { style: "currency", currency: currencyCode, maximumFractionDigits: 0 }), [currencyCode])
+  const locale = currencyCode === "INR" ? "en-IN" : undefined
+  const formatter = useMemo(() => new Intl.NumberFormat(locale ?? undefined, { style: "currency", currency: currencyCode, maximumFractionDigits: 0 }), [currencyCode, locale])
   const currency = (n: number) => formatter.format(n)
 
   if (!rows?.length) return null

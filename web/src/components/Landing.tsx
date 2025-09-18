@@ -37,8 +37,6 @@ export default function Landing(props: {
   onSimulate: () => void
   running: boolean
   onApplyPreset?: (name: "lean" | "baseline" | "fat") => void
-  assets?: { name?: string; amount: number }[]
-  onAssetsChange?: (rows: { name?: string; amount: number }[]) => void
   otherIncomes?: { amount: number; start_year: number }[]
   onOtherIncomesChange?: (rows: { amount: number; start_year: number }[]) => void
   expenses?: { amount: number; at_year_from_now: number }[]
@@ -47,65 +45,65 @@ export default function Landing(props: {
   const p = props
   return (
     <div className="landing">
-      <section className="landing-hero">
-        <div className="landing-hero__copy">
-          <h1>Modern FIRE planning for the US and India</h1>
+      <div className="landing__grid">
+        <section className="landing__hero">
+          <span className="landing__tag">Now covering US and India markets</span>
+          <h1>Plan your FIRE journey with realistic market data</h1>
           <p>
-            Model your journey to financial independence with fresh historical data sources. Stress-test against every month of market history and Monte Carlo paths tailored to your region.
+            Stress-test your spending plan against every historical market path and a modern Monte Carlo simulation. Toggle markets, adjust assumptions, and get a feel for your odds before you pull the trigger.
           </p>
-          <div className="landing-hero__actions">
+          <div className="landing__actions">
             <button className="btn btn-primary btn-lg" type="button" onClick={p.onSimulate} disabled={p.running}>
-              {p.running ? "Preparing…" : "Jump to results"}
+              {p.running ? "Preparing..." : "Jump to results"}
             </button>
-            <span className="help">or tweak assumptions below before running the full simulation.</span>
+            <span className="help">Or tailor the assumptions below first.</span>
           </div>
-        </div>
-      </section>
-
-      <section className="landing-plan">
-        <Inputs
-          market={p.market}
-          onMarketChange={p.onMarketChange}
-          currencyCode={p.currencyCode}
-          initial={p.initial}
-          onInitial={p.onInitial}
-          spend={p.spend}
-          onSpend={p.onSpend}
-          years={p.years}
-          onYears={p.onYears}
-          strategy={p.strategy}
-          onStrategy={p.onStrategy}
-          vpwPct={p.vpwPct}
-          onVpwPct={p.onVpwPct}
-          guardBand={p.guardBand}
-          onGuardBand={p.onGuardBand}
-          guardStep={p.guardStep}
-          onGuardStep={p.onGuardStep}
-          startDelayYears={p.startDelayYears}
-          onStartDelay={p.onStartDelay}
-          annualContrib={p.annualContrib}
-          onAnnualContrib={p.onAnnualContrib}
-          incomeAmount={p.incomeAmount}
-          onIncomeAmount={p.onIncomeAmount}
-          incomeStartYear={p.incomeStartYear}
-          onIncomeStartYear={p.onIncomeStartYear}
-          stillWorking={p.stillWorking}
-          onStillWorking={p.onStillWorking}
-          expectedRealReturn={p.expectedRealReturn}
-          onExpectedRealReturn={p.onExpectedRealReturn}
-          currentAge={p.currentAge}
-          onCurrentAge={p.onCurrentAge}
-          inflationPct={p.inflationPct}
-          onInflationPct={p.onInflationPct}
-          otherIncomes={p.otherIncomes}
-          onOtherIncomesChange={p.onOtherIncomesChange}
-          expenses={p.expenses}
-          onExpensesChange={p.onExpensesChange}
-          onRun={p.onSimulate}
-          running={p.running}
-          onApplyPreset={p.onApplyPreset}
-        />
-      </section>
+        </section>
+        <section className="landing__panel">
+          <Inputs
+            market={p.market}
+            onMarketChange={p.onMarketChange}
+            currencyCode={p.currencyCode}
+            initial={p.initial}
+            onInitial={p.onInitial}
+            spend={p.spend}
+            onSpend={p.onSpend}
+            years={p.years}
+            onYears={p.onYears}
+            strategy={p.strategy}
+            onStrategy={p.onStrategy}
+            vpwPct={p.vpwPct}
+            onVpwPct={p.onVpwPct}
+            guardBand={p.guardBand}
+            onGuardBand={p.onGuardBand}
+            guardStep={p.guardStep}
+            onGuardStep={p.onGuardStep}
+            startDelayYears={p.startDelayYears}
+            onStartDelay={p.onStartDelay}
+            annualContrib={p.annualContrib}
+            onAnnualContrib={p.onAnnualContrib}
+            incomeAmount={p.incomeAmount}
+            onIncomeAmount={p.onIncomeAmount}
+            incomeStartYear={p.incomeStartYear}
+            onIncomeStartYear={p.onIncomeStartYear}
+            stillWorking={p.stillWorking}
+            onStillWorking={p.onStillWorking}
+            expectedRealReturn={p.expectedRealReturn}
+            onExpectedRealReturn={p.onExpectedRealReturn}
+            currentAge={p.currentAge}
+            onCurrentAge={p.onCurrentAge}
+            inflationPct={p.inflationPct}
+            onInflationPct={p.onInflationPct}
+            otherIncomes={p.otherIncomes}
+            onOtherIncomesChange={p.onOtherIncomesChange}
+            expenses={p.expenses}
+            onExpensesChange={p.onExpensesChange}
+            onRun={p.onSimulate}
+            running={p.running}
+            onApplyPreset={p.onApplyPreset}
+          />
+        </section>
+      </div>
     </div>
   )
 }

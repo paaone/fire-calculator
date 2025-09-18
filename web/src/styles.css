@@ -25,18 +25,25 @@ a { color: var(--accent-2); text-decoration: none; }
 a:hover { text-decoration: underline; }
 
 .container {
-  width: min(1080px, 100%);
+  width: min(1240px, 96vw);
   margin: 0 auto;
-  padding: 32px 24px 64px;
+  padding: 36px 32px 72px;
 }
 
-.container.results { width: min(1180px, 100%); }
+.container.results { width: min(1420px, 96vw); }
 
 .layout {
   display: grid;
-  grid-template-columns: minmax(320px, 360px) minmax(0, 1fr);
-  gap: 24px;
+  grid-template-columns: minmax(260px, 28%) minmax(0, 1fr);
+  gap: 32px;
   align-items: start;
+}
+
+@media (min-width: 1440px) {
+  .layout {
+    grid-template-columns: minmax(280px, 26%) minmax(0, 1fr);
+    gap: 36px;
+  }
 }
 
 @media (max-width: 1024px) {
@@ -69,6 +76,10 @@ a:hover { text-decoration: underline; }
   color: var(--muted);
   letter-spacing: 0.08em;
 }
+
+.field-header { display: flex; flex-direction: column; gap: 4px; margin-bottom: 6px; }
+.field-header .label { margin: 0; }
+.label-help { font-size: 13px; color: var(--muted); text-transform: none; letter-spacing: 0; line-height: 1.5; }
 
 .input,
 .select {
@@ -213,21 +224,15 @@ a:hover { text-decoration: underline; }
 .panel-error,
 .panel { overflow: hidden; }
 
-.landing { display: flex; flex-direction: column; gap: 32px; padding: 32px 0 64px; }
-.landing-hero {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  padding: 0 24px;
-}
-.landing-hero__copy { max-width: 720px; }
-.landing-hero h1 { font-size: clamp(32px, 5vw, 44px); margin-bottom: 16px; }
-.landing-hero p { margin: 0 auto 24px; color: var(--muted); max-width: 640px; font-size: 18px; }
-.landing-hero__actions { display: flex; flex-direction: column; gap: 8px; align-items: center; }
-
-.landing-plan { display: flex; justify-content: center; padding: 0 24px; }
-.landing-plan .plan-card { width: min(720px, 100%); position: static; }
+.landing { padding: 48px 0 72px; }
+.landing__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 32px; align-items: stretch; }
+.landing__hero { display: flex; flex-direction: column; justify-content: center; gap: 16px; padding: 0 24px; }
+.landing__tag { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; background: #e0f2fe; border-radius: 999px; color: #1d4ed8; font-size: 12px; font-weight: 600; width: max-content; }
+.landing__hero h1 { margin: 0; font-size: clamp(32px, 4vw, 46px); line-height: 1.1; }
+.landing__hero p { margin: 0; max-width: 560px; color: var(--muted); font-size: 18px; line-height: 1.6; }
+.landing__actions { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+.landing__panel { display: flex; justify-content: center; }
+.landing__panel .plan-card { position: static; width: min(720px, 100%); }
 
 .chart-card .recharts-surface { overflow: visible; }
 
@@ -236,4 +241,6 @@ a:hover { text-decoration: underline; }
   .layout { gap: 16px; }
   .plan-card { position: static; }
   .chart-card__body { height: 300px; }
+  .landing__hero { padding: 0 12px; text-align: left; }
+  .landing__actions { align-items: flex-start; }
 }
