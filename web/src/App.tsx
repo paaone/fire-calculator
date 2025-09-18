@@ -348,7 +348,7 @@ export default function App() {
   const handleMarketChange = (next: MarketCode) => {
     setMarket(next)
     setApplyDefaultsPending(true)
-    setView("results")
+    setView((prev) => (prev === "results" ? prev : "landing"))
   }
 
   const baseYear = new Date().getFullYear()
@@ -758,6 +758,3 @@ export default function App() {
     </div>
   )
 }
-
-
-

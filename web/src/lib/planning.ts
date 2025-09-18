@@ -61,14 +61,14 @@ export const SPENDING_CATEGORY_PRESETS: Array<{
   weight: number
   inflation: number
 }> = [
-  { key: "housing", label: "Housing & utilities", weight: 0.3, inflation: 2.5 },
-  { key: "food", label: "Groceries & dining", weight: 0.18, inflation: 2.5 },
-  { key: "transportation", label: "Transportation", weight: 0.1, inflation: 2.3 },
-  { key: "healthcare", label: "Healthcare", weight: 0.12, inflation: 4 },
-  { key: "education", label: "Education & personal growth", weight: 0.07, inflation: 5 },
+  { key: "housing", label: "Housing & utilities", weight: 0.3, inflation: 3 },
+  { key: "food", label: "Groceries & dining", weight: 0.18, inflation: 3 },
+  { key: "transportation", label: "Transportation", weight: 0.1, inflation: 3 },
+  { key: "healthcare", label: "Healthcare", weight: 0.12, inflation: 6 },
+  { key: "education", label: "Education & personal growth", weight: 0.07, inflation: 6 },
   { key: "travel", label: "Travel & experiences", weight: 0.1, inflation: 3 },
-  { key: "childcare", label: "Family & childcare", weight: 0.08, inflation: 3.5 },
-  { key: "other", label: "Everything else", weight: 0.05, inflation: 2.5 },
+  { key: "childcare", label: "Family & childcare", weight: 0.08, inflation: 3 },
+  { key: "other", label: "Everything else", weight: 0.05, inflation: 3 },
 ]
 
 export const FUTURE_EXPENSE_OPTIONS: Array<{
@@ -123,7 +123,7 @@ export function defaultSpendingCategories(total: number): SpendingCategoryPlan[]
       id: createId(),
       label: preset.label,
       amount: rounded,
-      inflation: preset.inflation,
+      inflation: suggestedInflationForSpending(preset.key),
       category: preset.key,
     })
   })
@@ -157,7 +157,7 @@ export function suggestedInflationForIncome(category: IncomeCategoryKey): number
 }
 
 export function suggestedInflationForSpending(category: SpendingCategoryKey): number {
-  return SPENDING_CATEGORY_PRESETS.find((preset) => preset.key === category)?.inflation ?? 2.5
+  return SPENDING_CATEGORY_PRESETS.find((preset) => preset.key === category)?.inflation ?? 3
 }
 
 export function toRealAmount(amount: number, inflationPct: number, yearsFromNow: number): number {
@@ -168,14 +168,22 @@ export function toRealAmount(amount: number, inflationPct: number, yearsFromNow:
   return amount / Math.pow(rate, exponent)
 }
 
+function growAmount(amount: number, inflationPct: number, yearsFromNow: number): number {
+  if (!Number.isFinite(amount)) return 0
+  const rate = 1 + (Number.isFinite(inflationPct) ? inflationPct : 0) / 100
+  if (rate <= 0) return amount
+  const exponent = Math.max(0, yearsFromNow)
+  return amount * Math.pow(rate, exponent)
+}
+
 export function expandFutureExpenses(items: FutureExpensePlan[]): { amount: number; at_year_from_now: number }[] {
   const expanded: { amount: number; at_year_from_now: number }[] = []
   items.forEach((item) => {
     const cycles = item.frequency === "recurring" ? Math.max(1, Math.round(item.years)) : 1
     for (let i = 0; i < cycles; i++) {
       const year = Math.max(0, Math.round(item.startYear + i))
-      const realAmount = toRealAmount(item.amount, item.inflation, year)
-      expanded.push({ amount: roundCurrency(realAmount), at_year_from_now: year })
+      const nominalAmount = growAmount(item.amount, item.inflation, year)
+      expanded.push({ amount: roundCurrency(nominalAmount), at_year_from_now: year })
     }
   })
   return expanded

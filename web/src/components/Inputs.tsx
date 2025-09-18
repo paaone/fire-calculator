@@ -1,3 +1,4 @@
+import { useMemo } from "react"
 import Accordion from "./Accordion"
 import CurrencyInput from "./CurrencyInput"
 import {
@@ -14,6 +15,19 @@ import {
   defaultSpendingCategories,
   totalSpendingFromCategories,
 } from "../lib/planning"
+
+const SPENDING_CATEGORY_DATALIST_ID = "spending-category-options"
+const healthKeywords = /health|medical/i
+const educationKeywords = /educ/i
+
+function inferCategoryFromLabel(label: string, fallback: SpendingCategoryPlan["category"]): SpendingCategoryPlan["category"] {
+  const trimmed = label.trim().toLowerCase()
+  const preset = SPENDING_CATEGORY_PRESETS.find((option) => option.label.toLowerCase() === trimmed)
+  if (preset) return preset.key
+  if (healthKeywords.test(trimmed)) return "healthcare"
+  if (educationKeywords.test(trimmed)) return "education"
+  return fallback
+}
 
 export type StrategyName = "fixed" | "variable_percentage" | "guardrails"
 export type MarketSelection = string
@@ -137,35 +151,54 @@ export default function Inputs({
   onRun,
   running,
 }: Props) {
+  const categoryLabelOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          [
+            ...SPENDING_CATEGORY_PRESETS.map((option) => option.label),
+            ...spendingCategories.map((item) => item.label),
+          ].filter((label) => label && label.trim().length),
+        ),
+      ),
+    [spendingCategories],
+  )
   const totalBreakdown = totalSpendingFromCategories(spendingCategories)
+  const breakdownMatchesSpend = Math.abs(totalBreakdown - spend) < 0.5
 
   const handleCategoryChange = (index: number, update: Partial<SpendingCategoryPlan>) => {
-    const next = spendingCategories.map((item, idx) => (idx === index ? { ...item, ...update } : item))
+    const current = spendingCategories[index]
+    if (!current) return
+    const nextRow = { ...current, ...update }
+
+    if (Object.prototype.hasOwnProperty.call(update, "label")) {
+      const inferred = inferCategoryFromLabel(String(update.label ?? ""), nextRow.category)
+      nextRow.category = inferred
+      if (!Object.prototype.hasOwnProperty.call(update, "inflation")) {
+        nextRow.inflation = suggestedInflationForSpending(inferred)
+      }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(update, "category") && !Object.prototype.hasOwnProperty.call(update, "inflation")) {
+      nextRow.inflation = suggestedInflationForSpending(nextRow.category)
+    }
+
+    const next = spendingCategories.map((item, idx) => (idx === index ? nextRow : item))
     onSpendingCategoriesChange(next)
   }
 
-  const handleCategorySelect = (index: number, category: SpendingCategoryPlan["category"]) => {
-    const preset = SPENDING_CATEGORY_PRESETS.find((option) => option.key === category)
-    handleCategoryChange(index, {
-      category,
-      label: preset?.label ?? spendingCategories[index]?.label ?? "Custom",
-      inflation: suggestedInflationForSpending(category),
-    })
-  }
-
   const handleAddCategory = () => {
-    const fallback = SPENDING_CATEGORY_PRESETS.find((option) => option.key === "other")
-    const next = [
+    const fallback = SPENDING_CATEGORY_PRESETS.find((option) => option.key === "other") ?? SPENDING_CATEGORY_PRESETS[0]
+    onSpendingCategoriesChange([
       ...spendingCategories,
       {
         id: createId(),
         label: fallback?.label ?? "Custom need",
         amount: 0,
-        inflation: fallback?.inflation ?? 2.5,
+        inflation: suggestedInflationForSpending((fallback?.key ?? "other") as SpendingCategoryPlan["category"]),
         category: (fallback?.key ?? "other") as SpendingCategoryPlan["category"],
       },
-    ]
-    onSpendingCategoriesChange(next)
+    ])
   }
 
   const handleRemoveCategory = (index: number) => {
@@ -315,69 +348,84 @@ export default function Inputs({
 
       <div className="divider" />
 
-      <SectionHeader title="Portfolio today" hint="What you've already saved and the inflation assumption for projections." />
-      <div className="row">
-        <div>
-          <FieldHeader label="Current invested portfolio" help="Starting balance in today's currency." />
-          <CurrencyInput value={initial} onChange={onInitial} currency={currencyCode} />
+      <SectionHeader title="Portfolio today" hint="What you've already saved. Adjust inflation if you need a custom nominal projection." />
+      <FieldHeader label="Current invested portfolio" help="Starting balance in today's currency." />
+      <CurrencyInput value={initial} onChange={onInitial} currency={currencyCode} />
+      <Accordion title="Inflation & details" defaultOpen={false}>
+        <div className="row">
+          <div>
+            <FieldHeader label="Inflation assumption" help="Used when toggling to nominal (actual) dollars." />
+            <input className="input" type="number" min={0} max={15} step={0.1} value={inflationPct} onChange={(e) => onInflationPct?.(Number(e.target.value))} />
+          </div>
         </div>
-        <div>
-          <FieldHeader label="Inflation assumption" help="Used when toggling to nominal (actual) dollars." />
-          <input className="input" type="number" min={0} max={15} step={0.1} value={inflationPct} onChange={(e) => onInflationPct?.(Number(e.target.value))} />
-        </div>
-      </div>
+      </Accordion>
 
       <div className="divider" />
 
       <SectionHeader
         title="Core spending plan"
-        hint="Break your lifestyle costs into categories. We keep everything in today’s dollars so you can compare apples to apples."
+        hint="Break your lifestyle costs into categories. We keep everything in today's dollars so you can compare apples to apples."
       />
       <FieldHeader label="Total annual living expenses" help="We'll scale the category amounts proportionally when you adjust this number." />
       <CurrencyInput value={spend} onChange={onSpend} currency={currencyCode} />
-      <div className="help">Breakdown total: {currencyCode} {totalBreakdown.toLocaleString()}</div>
-
-      <div className="vstack" style={{ gap: 12 }}>
-        {spendingCategories.map((item, idx) => (
-          <div className="row" key={item.id}>
-            <div>
-              <FieldHeader label="Category" />
-              <select className="select" value={item.category} onChange={(e) => handleCategorySelect(idx, e.target.value as SpendingCategoryPlan["category"]) }>
-                {SPENDING_CATEGORY_PRESETS.map((option) => (
-                  <option key={option.key} value={option.key}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <FieldHeader label="Label" />
-              <input className="input" type="text" value={item.label} onChange={(e) => handleCategoryChange(idx, { label: e.target.value })} />
-            </div>
-            <div>
-              <FieldHeader label="Amount" />
-              <CurrencyInput value={item.amount} onChange={(value) => handleCategoryChange(idx, { amount: value })} currency={currencyCode} />
-            </div>
-            <div>
-              <FieldHeader label="Inflation %" help="We suggest a starting point based on the category." />
-              <input className="input" type="number" min={0} max={10} step={0.1} value={item.inflation} onChange={(e) => handleCategoryChange(idx, { inflation: Number(e.target.value) })} />
-            </div>
-            <div className="vstack" style={{ justifyContent: "flex-end" }}>
-              <button className="btn btn-secondary btn-sm" type="button" onClick={() => handleRemoveCategory(idx)}>
-                Remove
-              </button>
-            </div>
-          </div>
-        ))}
-        <div className="hstack" style={{ justifyContent: "space-between", marginTop: 4 }}>
-          <button className="btn btn-secondary btn-sm" type="button" onClick={handleAddCategory}>
-            Add category
-          </button>
-          <button className="btn btn-secondary btn-sm" type="button" onClick={() => onSpendingCategoriesChange(defaultSpendingCategories(spend))}>
-            Reset to suggested mix
-          </button>
+      {!breakdownMatchesSpend && (
+        <div className="help" style={{ color: "var(--accent)" }}>
+          Breakdown total is {currencyCode} {totalBreakdown.toLocaleString()}. Adjust categories to match the total above.
         </div>
-      </div>
+      )}
+      <Accordion title="Breakdown by category (optional)" defaultOpen={false}>
+        <div className="category-breakdown">
+          <div className="category-breakdown__totals" style={{ color: breakdownMatchesSpend ? "var(--muted)" : "var(--accent)" }}>
+            Breakdown total: {currencyCode} {totalBreakdown.toLocaleString()}
+            {!breakdownMatchesSpend && " (doesn't match total above yet)"}
+          </div>
+          <div className="category-grid">
+            <div className="category-grid__row category-grid__row--header">
+              <span>Label</span>
+              <span>Amount</span>
+              <span>Inflation %</span>
+              <span />
+            </div>
+            {spendingCategories.map((item, idx) => (
+              <div className="category-grid__row" key={item.id}>
+                <input
+                  className="input"
+                  type="text"
+                  list={SPENDING_CATEGORY_DATALIST_ID}
+                  value={item.label}
+                  onChange={(e) => handleCategoryChange(idx, { label: e.target.value })}
+                />
+                <CurrencyInput value={item.amount} onChange={(value) => handleCategoryChange(idx, { amount: value })} currency={currencyCode} />
+                <input
+                  className="input"
+                  type="number"
+                  min={0}
+                  max={10}
+                  step={0.1}
+                  value={item.inflation}
+                  onChange={(e) => handleCategoryChange(idx, { inflation: Number(e.target.value) })}
+                />
+                <button className="btn btn-secondary btn-sm" type="button" onClick={() => handleRemoveCategory(idx)}>
+                  Remove
+                </button>
+              </div>
+            ))}
+          </div>
+          <div className="category-actions">
+            <button className="btn btn-secondary btn-sm" type="button" onClick={handleAddCategory}>
+              Add category
+            </button>
+            <button className="btn btn-secondary btn-sm" type="button" onClick={() => onSpendingCategoriesChange(defaultSpendingCategories(spend))}>
+              Reset to suggested mix
+            </button>
+          </div>
+          <datalist id={SPENDING_CATEGORY_DATALIST_ID}>
+            {categoryLabelOptions.map((option) => (
+              <option key={option} value={option} />
+            ))}
+          </datalist>
+        </div>
+      </Accordion>
 
       <div className="divider" />
 

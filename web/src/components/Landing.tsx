@@ -62,12 +62,6 @@ export default function Landing(p: LandingProps) {
           Stress-test your spending plan against every historical market path and a modern Monte Carlo simulation. Toggle markets,
           adjust assumptions, and get a feel for your odds before you pull the trigger.
         </p>
-        <div className="landing__actions">
-          <button className="btn btn-primary btn-lg" type="button" onClick={p.onSimulate} disabled={p.running}>
-            {p.running ? "Preparing..." : "Jump to results"}
-          </button>
-          <span className="help">Or tailor the assumptions below first.</span>
-        </div>
       </section>
 
       <section className="landing__panel">
