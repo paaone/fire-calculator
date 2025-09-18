@@ -238,7 +238,7 @@ export default function Inputs({
           <div className="vstack">
             <span className="label">Additional income streams</span>
             {otherIncomes.map((row, idx) => (
-              <div className="row" key={income-}>
+              <div className="row" key={`income-${idx}`}>
                 <CurrencyInput
                   value={row.amount}
                   onChange={(value) => {
@@ -289,7 +289,7 @@ export default function Inputs({
           <div className="vstack">
             <div className="help">Model large purchases such as a home down payment. Amounts are expressed in today's currency.</div>
             {expenses.map((row, idx) => (
-              <div className="row" key={expense-}>
+              <div className="row" key={`expense-${idx}`}>
                 <CurrencyInput
                   value={row.amount}
                   onChange={(value) => {
@@ -345,3 +345,4 @@ export default function Inputs({
     </div>
   )
 }
+
