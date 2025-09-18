@@ -535,9 +535,9 @@ export default function App() {
       }
 
       const expenseBucket = expenseSchedule.get(y) ?? { nominal: 0, real: 0 }
-      const otherSpending = valueUnits === \"nominal\" ? expenseBucket.nominal : expenseBucket.real
+      const otherSpending = valueUnits === "nominal" ? expenseBucket.nominal : expenseBucket.real
       const incomeBucket = incomeSchedule.get(y) ?? { nominal: 0, real: 0 }
-      const otherIncome = valueUnits === \"nominal\" ? incomeBucket.nominal : incomeBucket.real
+      const otherIncome = valueUnits === "nominal" ? incomeBucket.nominal : incomeBucket.real
       const recurringIncome = y >= incomeStartYear ? incomeAmount : 0
       const netIncome = recurringIncome + otherIncome
       const cashFlow = basic + otherSpending - netIncome
@@ -870,3 +870,4 @@ export default function App() {
     </div>
   )
 }
+
