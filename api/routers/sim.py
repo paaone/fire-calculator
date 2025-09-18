@@ -4,19 +4,25 @@ from typing import Any, Dict
 from fastapi import APIRouter, HTTPException
 
 from ..models import MCRequest, SimRequest
-from ..services.returns import get_market_real_returns
+from ..services.returns import (
+    get_market_real_returns,
+    get_market_metadata,
+    list_available_markets,
+)
 from ..services.simulator import Strategy, simulate_historical, simulate_monte_carlo
 
 
 router = APIRouter(tags=["simulation"])
 
 
+@router.get("/markets")
+def markets_catalog() -> Dict[str, Any]:
+    return {"markets": list(list_available_markets().values())}
+
+
 @router.get("/returns/meta")
 def returns_meta(market: str = "us") -> Dict[str, Any]:
-    df, source = get_market_real_returns(market=market)
-    start = str(df["date"].min())
-    end = str(df["date"].max())
-    return {"source": source, "start": start, "end": end, "months": int(len(df)), "market": market}
+    return get_market_metadata(market)
 
 
 @router.post("/simulate/historical")
@@ -73,4 +79,3 @@ def simulate_montecarlo_api(req: MCRequest) -> Dict[str, Any]:
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
-

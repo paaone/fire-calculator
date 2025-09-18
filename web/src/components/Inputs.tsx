@@ -2,10 +2,16 @@ import Accordion from "./Accordion"
 import CurrencyInput from "./CurrencyInput"
 
 export type StrategyName = "fixed" | "variable_percentage" | "guardrails"
-export type MarketSelection = "us" | "india"
+export type MarketSelection = string
+
+interface MarketOption {
+  key: MarketSelection
+  label: string
+}
 
 type Props = {
   market: MarketSelection
+  markets: MarketOption[]
   onMarketChange: (market: MarketSelection) => void
   currencyCode: string
   initial: number
@@ -39,8 +45,6 @@ type Props = {
   inflationPct?: number
   onInflationPct?: (v: number) => void
   onApplyPreset?: (name: "lean" | "baseline" | "fat") => void
-  assets?: { name?: string; amount: number }[]
-  onAssetsChange?: (rows: { name?: string; amount: number }[]) => void
   otherIncomes?: { amount: number; start_year: number }[]
   onOtherIncomesChange?: (rows: { amount: number; start_year: number }[]) => void
   expenses?: { amount: number; at_year_from_now: number }[]
@@ -58,50 +62,49 @@ function FieldHeader({ label, help }: { label: string; help?: string }) {
   )
 }
 
-export default function Inputs(props: Props) {
-  const {
-    market,
-    onMarketChange,
-    currencyCode,
-    initial,
-    onInitial,
-    spend,
-    onSpend,
-    years,
-    onYears,
-    strategy,
-    onStrategy,
-    vpwPct,
-    onVpwPct,
-    guardBand,
-    onGuardBand,
-    guardStep,
-    onGuardStep,
-    startDelayYears,
-    onStartDelay,
-    annualContrib,
-    onAnnualContrib,
-    incomeAmount,
-    onIncomeAmount,
-    incomeStartYear,
-    onIncomeStartYear,
-    stillWorking,
-    onStillWorking,
-    expectedRealReturn,
-    onExpectedRealReturn,
-    currentAge = 0,
-    onCurrentAge,
-    inflationPct = 3,
-    onInflationPct,
-    onApplyPreset,
-    otherIncomes = [],
-    onOtherIncomesChange,
-    expenses = [],
-    onExpensesChange,
-    onRun,
-    running,
-  } = props
-
+export default function Inputs({
+  market,
+  markets,
+  onMarketChange,
+  currencyCode,
+  initial,
+  onInitial,
+  spend,
+  onSpend,
+  years,
+  onYears,
+  strategy,
+  onStrategy,
+  vpwPct,
+  onVpwPct,
+  guardBand,
+  onGuardBand,
+  guardStep,
+  onGuardStep,
+  startDelayYears,
+  onStartDelay,
+  annualContrib,
+  onAnnualContrib,
+  incomeAmount,
+  onIncomeAmount,
+  incomeStartYear,
+  onIncomeStartYear,
+  stillWorking,
+  onStillWorking,
+  expectedRealReturn,
+  onExpectedRealReturn,
+  currentAge = 0,
+  onCurrentAge,
+  inflationPct = 3,
+  onInflationPct,
+  onApplyPreset,
+  otherIncomes = [],
+  onOtherIncomesChange,
+  expenses = [],
+  onExpensesChange,
+  onRun,
+  running,
+}: Props) {
   return (
     <div className="panel vstack plan-card">
       <div className="plan-card__heading">
@@ -124,27 +127,23 @@ export default function Inputs(props: Props) {
       <div className="plan-card__market">
         <span className="label">Market focus</span>
         <div className="segmented segmented-lg">
-          <button
-            type="button"
-            className={market === "us" ? "active" : ""}
-            onClick={() => onMarketChange("us")}
-          >
-            US market
-          </button>
-          <button
-            type="button"
-            className={market === "india" ? "active" : ""}
-            onClick={() => onMarketChange("india")}
-          >
-            India market
-          </button>
+          {markets.map((option) => (
+            <button
+              key={option.key}
+              type="button"
+              className={market === option.key ? "active" : ""}
+              onClick={() => onMarketChange(option.key)}
+            >
+              {option.label}
+            </button>
+          ))}
         </div>
       </div>
 
-      <FieldHeader label="Initial portfolio" help="Starting portfolio in today’s currency." />
+      <FieldHeader label="Initial portfolio" help="Starting portfolio in today's currency." />
       <CurrencyInput value={initial} onChange={onInitial} currency={currencyCode} />
 
-      <FieldHeader label="Annual spending" help="Amount you plan to spend per year in today’s currency." />
+      <FieldHeader label="Annual spending" help="Amount you plan to spend per year in today's currency." />
       <CurrencyInput value={spend} onChange={onSpend} currency={currencyCode} />
 
       <div>
@@ -154,7 +153,7 @@ export default function Inputs(props: Props) {
 
       <div className="row">
         <div>
-          <FieldHeader label="Working status" help="If you are still contributing, we’ll project when you reach FI with the expected real return." />
+          <FieldHeader label="Working status" help="If you are still contributing, we'll project when you reach FI with the expected real return." />
           <select className="select" value={stillWorking ? "yes" : "no"} onChange={(e) => onStillWorking(e.target.value === "yes")}>
             <option value="yes">Still working</option>
             <option value="no">Already retired</option>
@@ -171,22 +170,20 @@ export default function Inputs(props: Props) {
       </div>
 
       {stillWorking && (
-        <>
-          <div className="row">
-            <div>
-              <FieldHeader label="Annual savings" help="Amount added to the portfolio each year until retirement." />
-              <CurrencyInput value={annualContrib} onChange={onAnnualContrib} currency={currencyCode} />
-            </div>
-            <div>
-              <FieldHeader label="Expected real return (pre-retirement)" />
-              <input className="input" type="number" value={expectedRealReturn} onChange={(e) => onExpectedRealReturn(Number(e.target.value))} min={0} max={15} step={0.1} />
-            </div>
-            <div>
-              <FieldHeader label="Years until retirement" />
-              <input className="input" type="number" min={0} max={40} step={1} value={startDelayYears} onChange={(e) => onStartDelay(Number(e.target.value))} />
-            </div>
+        <div className="row">
+          <div>
+            <FieldHeader label="Annual savings" help="Amount added to the portfolio each year until retirement." />
+            <CurrencyInput value={annualContrib} onChange={onAnnualContrib} currency={currencyCode} />
           </div>
-        </>
+          <div>
+            <FieldHeader label="Expected real return (pre-retirement)" />
+            <input className="input" type="number" value={expectedRealReturn} onChange={(e) => onExpectedRealReturn(Number(e.target.value))} min={0} max={15} step={0.1} />
+          </div>
+          <div>
+            <FieldHeader label="Years until retirement" />
+            <input className="input" type="number" min={0} max={40} step={1} value={startDelayYears} onChange={(e) => onStartDelay(Number(e.target.value))} />
+          </div>
+        </div>
       )}
 
       <div>
@@ -241,24 +238,48 @@ export default function Inputs(props: Props) {
           <div className="vstack">
             <span className="label">Additional income streams</span>
             {otherIncomes.map((row, idx) => (
-              <div className="row" key={`income-${idx}`}>
-                <CurrencyInput value={row.amount} onChange={(v) => {
-                  const next = otherIncomes.slice()
-                  next[idx] = { ...row, amount: v }
-                  onOtherIncomesChange(next)
-                }} currency={currencyCode} />
-                <input className="input" type="number" min={0} max={60} step={1} value={row.start_year} onChange={(e) => {
-                  const next = otherIncomes.slice()
-                  next[idx] = { ...row, start_year: Number(e.target.value) }
-                  onOtherIncomesChange(next)
-                }} />
-                <button className="btn" type="button" onClick={() => {
-                  const next = otherIncomes.filter((_, i) => i !== idx)
-                  onOtherIncomesChange(next)
-                }}>Remove</button>
+              <div className="row" key={income-}>
+                <CurrencyInput
+                  value={row.amount}
+                  onChange={(value) => {
+                    const next = otherIncomes.slice()
+                    next[idx] = { ...row, amount: value }
+                    onOtherIncomesChange(next)
+                  }}
+                  currency={currencyCode}
+                />
+                <input
+                  className="input"
+                  type="number"
+                  min={0}
+                  max={60}
+                  step={1}
+                  value={row.start_year}
+                  onChange={(e) => {
+                    const next = otherIncomes.slice()
+                    next[idx] = { ...row, start_year: Number(e.target.value) }
+                    onOtherIncomesChange(next)
+                  }}
+                />
+                <button
+                  className="btn"
+                  type="button"
+                  onClick={() => {
+                    const next = otherIncomes.filter((_, i) => i !== idx)
+                    onOtherIncomesChange(next)
+                  }}
+                >
+                  Remove
+                </button>
               </div>
             ))}
-            <button className="btn btn-secondary btn-sm" type="button" onClick={() => onOtherIncomesChange([...(otherIncomes || []), { amount: 0, start_year: 0 }])}>Add income line</button>
+            <button
+              className="btn btn-secondary btn-sm"
+              type="button"
+              onClick={() => onOtherIncomesChange([...(otherIncomes || []), { amount: 0, start_year: 0 }])}
+            >
+              Add income line
+            </button>
           </div>
         )}
       </Accordion>
@@ -266,26 +287,50 @@ export default function Inputs(props: Props) {
       {onExpensesChange && (
         <Accordion title="One-time expenses (years from now)">
           <div className="vstack">
-            <div className="help">Model large purchases such as a home down payment. Amounts are expressed in today’s currency.</div>
+            <div className="help">Model large purchases such as a home down payment. Amounts are expressed in today's currency.</div>
             {expenses.map((row, idx) => (
-              <div className="row" key={`expense-${idx}`}>
-                <CurrencyInput value={row.amount} onChange={(v) => {
-                  const next = expenses.slice()
-                  next[idx] = { ...row, amount: v }
-                  onExpensesChange(next)
-                }} currency={currencyCode} />
-                <input className="input" type="number" min={0} max={60} step={1} value={row.at_year_from_now} onChange={(e) => {
-                  const next = expenses.slice()
-                  next[idx] = { ...row, at_year_from_now: Number(e.target.value) }
-                  onExpensesChange(next)
-                }} />
-                <button className="btn" type="button" onClick={() => {
-                  const next = expenses.filter((_, i) => i !== idx)
-                  onExpensesChange(next)
-                }}>Remove</button>
+              <div className="row" key={expense-}>
+                <CurrencyInput
+                  value={row.amount}
+                  onChange={(value) => {
+                    const next = expenses.slice()
+                    next[idx] = { ...row, amount: value }
+                    onExpensesChange(next)
+                  }}
+                  currency={currencyCode}
+                />
+                <input
+                  className="input"
+                  type="number"
+                  min={0}
+                  max={60}
+                  step={1}
+                  value={row.at_year_from_now}
+                  onChange={(e) => {
+                    const next = expenses.slice()
+                    next[idx] = { ...row, at_year_from_now: Number(e.target.value) }
+                    onExpensesChange(next)
+                  }}
+                />
+                <button
+                  className="btn"
+                  type="button"
+                  onClick={() => {
+                    const next = expenses.filter((_, i) => i !== idx)
+                    onExpensesChange(next)
+                  }}
+                >
+                  Remove
+                </button>
               </div>
             ))}
-            <button className="btn btn-secondary btn-sm" type="button" onClick={() => onExpensesChange([...(expenses || []), { amount: 0, at_year_from_now: 1 }])}>Add one-time expense</button>
+            <button
+              className="btn btn-secondary btn-sm"
+              type="button"
+              onClick={() => onExpensesChange([...(expenses || []), { amount: 0, at_year_from_now: 1 }])}
+            >
+              Add one-time expense
+            </button>
           </div>
         </Accordion>
       )}
@@ -300,4 +345,3 @@ export default function Inputs(props: Props) {
     </div>
   )
 }
-

@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 from typing import Literal, Optional
+
 from pydantic import BaseModel, Field, field_validator
 
+from .markets import get_market_registry
 
 StrategyType = Literal["fixed", "variable_percentage", "guardrails"]
-MarketType = Literal["us", "india"]
 
 
 class StrategyModel(BaseModel):
@@ -18,30 +19,34 @@ class StrategyModel(BaseModel):
 
     @field_validator("percentage")
     @classmethod
-    def _check_pct(cls, v: Optional[float]) -> Optional[float]:
-        if v is None:
-            return v
-        if not (0.0 <= v <= 0.2):
+    def _check_pct(cls, value: Optional[float]) -> Optional[float]:
+        if value is None:
+            return value
+        if not (0.0 <= value <= 0.2):
             raise ValueError("percentage must be between 0.0 and 0.2")
-        return v
+        return value
 
 
 class SimRequest(BaseModel):
-    market: MarketType = Field("us", description="Market regime for historical return sampling")
+    market: str = Field("us", description="Market key registered with the market registry")
     initial: float = Field(1_000_000, ge=0)
     spend: float = Field(40_000, ge=0)
     years: int = Field(30, ge=1, le=60)
     strategy: StrategyModel = Field(default_factory=StrategyModel)
     # Optional: planning details
-    start_delay_years: int = Field(0, ge=0, le=40, description="Years until retirement start; no withdrawals until then")
+    start_delay_years: int = Field(0, ge=0, le=40, description="Years until withdrawals begin")
     annual_contrib: float = Field(0, ge=0, description="Annual savings contributed each year until retirement starts")
     income_amount: float = Field(0, ge=0, description="Annual recurring income (SS/pension) during retirement")
     income_start_year: int = Field(0, ge=0, le=60, description="Year in retirement when income starts (0 = first year)")
-    # Multiple incomes: annual real amount starting in a given retirement year (0 = first retirement year)
     other_incomes: list[dict] = Field(default_factory=list, description="[{amount, start_year}]")
-    # One-time expenses at a year offset from now (simulation start)
     one_time_expenses: list[dict] = Field(default_factory=list, description="[{amount, at_year_from_now}]")
-    # Assets were removed; initial balance is the single source of truth
+
+    @field_validator("market")
+    @classmethod
+    def _ensure_market_registered(cls, value: str) -> str:
+        registry = get_market_registry()
+        registry.get(value)  # raises KeyError if missing
+        return value
 
 
 class MCRequest(SimRequest):
@@ -62,3 +67,4 @@ class SimResult(BaseModel):
     ending_balances: list[float]
     quantiles: Quantiles
     sample_path: list[float]
+

@@ -1,7 +1,13 @@
 import Inputs, { StrategyName, MarketSelection } from "./Inputs"
 
+interface MarketOption {
+  key: MarketSelection
+  label: string
+}
+
 export default function Landing(props: {
   market: MarketSelection
+  markets: MarketOption[]
   onMarketChange: (market: MarketSelection) => void
   currencyCode: string
   initial: number
@@ -62,6 +68,7 @@ export default function Landing(props: {
         <section className="landing__panel">
           <Inputs
             market={p.market}
+            markets={p.markets}
             onMarketChange={p.onMarketChange}
             currencyCode={p.currencyCode}
             initial={p.initial}

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import ProjectionChart, { SeriesPoint } from "./components/ProjectionChart"
 import CashFlowTable, { CashFlowRow } from "./components/CashFlowTable"
@@ -7,7 +7,17 @@ import Inputs, { StrategyName } from "./components/Inputs"
 import Landing from "./components/Landing"
 import Accordion from "./components/Accordion"
 import { FaCircleCheck, FaCircleExclamation } from "react-icons/fa6"
-import { fetchHistorical, fetchMonteCarlo, MarketCode, SimRequest, Strategy } from "./lib/api"
+import { ThemeToggle } from "./theme/ThemeToggle"
+import {
+  fetchMarkets,
+  fetchHistorical,
+  fetchMonteCarlo,
+  MarketCatalog,
+  MarketMetadata,
+  MarketCode,
+  SimRequest,
+  Strategy,
+} from "./lib/api"
 import { computeYearsToFI, fireTargetFromSpend } from "./lib/journey"
 
 export default function App() {
@@ -34,18 +44,31 @@ export default function App() {
   const [valueUnits, setValueUnits] = useState<"real" | "nominal">("real")
   const [currentAge, setCurrentAge] = useState<number>(0)
 
-  const [hasHydrated, setHasHydrated] = useState(false)
-  const skipNextMarketPreset = useRef(true)
-  const prevMarket = useRef<MarketCode>(market)
+  const [hydratedFromURL, setHydratedFromURL] = useState(false)
+  const [applyDefaultsOnMarketChange, setApplyDefaultsOnMarketChange] = useState(false)\n
+  const marketsQuery = useQuery<MarketCatalog>({
+    queryKey: ["markets"],
+    queryFn: fetchMarkets,
+  })
 
-  const currencyCode = market === "india" ? "INR" : "USD"
-  const locale = market === "india" ? "en-IN" : undefined
+  const marketOptions = useMemo(
+    () => (marketsQuery.data?.markets ?? []).map((m) => ({ key: m.key, label: m.label })),
+    [marketsQuery.data],
+  )
+
+  const marketMeta = useMemo<MarketMetadata | undefined>(() => {
+    const catalog = marketsQuery.data?.markets ?? []
+    return catalog.find((m) => m.key === market) ?? catalog[0]
+  }, [marketsQuery.data, market])
+
+  const currencyCode = marketMeta?.currency ?? "USD"
+  const locale = currencyCode === "INR" ? "en-IN" : undefined
   const currencyFormatter = useMemo(
     () => new Intl.NumberFormat(locale ?? undefined, { style: "currency", currency: currencyCode, maximumFractionDigits: 0 }),
     [currencyCode, locale],
   )
   const formatCurrency = useCallback((n: number) => currencyFormatter.format(n), [currencyFormatter])
-  const unitLabel = valueUnits === "real" ? `inflation-adjusted ${currencyCode}` : `actual ${currencyCode}`
+  const unitLabel = valueUnits === "real" ? inflation-adjusted  : ctual 
 
   const strategy: Strategy = useMemo(() => {
     if (strategyName === "variable_percentage") return { type: "variable_percentage", percentage: vpwPct / 100 }
@@ -87,7 +110,132 @@ export default function App() {
   const hist = histQuery.data
   const mc = mcQuery.data
 
+  useEffect(() => {
+    if (!marketsQuery.data?.markets?.length || hydratedFromURL) return
+
+    const catalog = marketsQuery.data.markets\n    const search = window.location.search\n    const sp = new URLSearchParams(search)
+
+    const applyDefaults = (meta: MarketMetadata | undefined) => {
+      if (!meta) return
+      const d = meta.defaults
+      setInitial(d.initial)
+      setSpend(d.spend)
+      setYears(d.years)
+      setInflationPct(d.inflation_pct)
+      setExpectedRealReturn(d.expected_real_return_pct)
+      setStillWorking(d.still_working)
+      setAnnualContrib(d.annual_contrib)
+      setIncomeAmount(d.income_amount)
+      setIncomeStartYear(d.income_start_year)
+      setStartDelayYears(d.start_delay_years)
+      setNPaths(d.n_paths)
+      setBlockSize(d.block_size)
+      setOtherIncomes([])
+      setExpenses([])
+      setValueUnits("real")
+    }
+
+    if (!sp.size) {
+      const fallback = catalog.find((m) => m.key === market) ?? catalog[0]
+      if (fallback) {
+        setMarket(fallback.key)
+        applyDefaults(fallback)
+      }
+      setHydratedFromURL(true)
+      setView("landing")
+      return
+    }
+
+    const num = (key: string, fallback: number) => {
+      const value = Number(sp.get(key))
+      return Number.isNaN(value) ? fallback : value
+    }
+    const str = (key: string, fallback: string) => sp.get(key) ?? fallback
+    const has = (key: string) => sp.has(key)
+
+    const sharedMarket = str("m", catalog[0]?.key ?? "us") as MarketCode
+    const meta = catalog.find((m) => m.key === sharedMarket) ?? catalog[0]
+    if (meta) {
+      setMarket(meta.key)
+    }
+
+    setInitial(num("i", initial))
+    setSpend(num("s", spend))
+    setYears(num("y", years))
+    setStillWorking(str("sw", "1") === "1")
+    setAnnualContrib(num("ac", annualContrib))
+    setExpectedRealReturn(num("er", expectedRealReturn))
+    setStartDelayYears(num("sd", startDelayYears))
+    setIncomeAmount(num("ia", incomeAmount))
+    setIncomeStartYear(num("isy", incomeStartYear))
+
+    const st = str("st", strategyName) as StrategyName
+    setStrategyName(st)
+    if (st === "variable_percentage" && has("vp")) setVpwPct(num("vp", vpwPct))
+    if (st === "guardrails") {
+      setGuardBand(num("gb", guardBand))
+      setGuardStep(num("gs", guardStep))
+    }
+    setNPaths(num("np", nPaths))
+    setBlockSize(num("bs", blockSize))
+    setInflationPct(num("inf", inflationPct))
+    setValueUnits((str("vu", "real") as "real" | "nominal") ?? "real")
+    const age = num("age", currentAge)
+    if (age) setCurrentAge(age)
+
+    const extras = sp.get("x")
+    if (extras) {
+      try {
+        const payload = JSON.parse(decodeURIComponent(extras))
+        if (payload.otherIncomes) setOtherIncomes(payload.otherIncomes)
+        if (payload.expenses) setExpenses(payload.expenses)
+      } catch {
+        // ignore malformed extras
+      }
+    }
+\n    setHydratedFromURL(true)
+    setView("results")
+  }, [marketsQuery.data, hydratedFromURL, initial, spend, years, strategyName, vpwPct, guardBand, guardStep, startDelayYears, annualContrib, incomeAmount, incomeStartYear, nPaths, blockSize, inflationPct, currentAge, market])
+
+  useEffect(() => {
+    if (!marketsQuery.data?.markets?.length || !hydratedFromURL) return
+    if (marketsQuery.data.markets.some((meta) => meta.key === market)) return
+    const fallback = marketsQuery.data.markets[0]
+    setMarket(fallback.key)
+    setApplyDefaultsOnMarketChange(true)
+  }, [marketsQuery.data, market, hydratedFromURL])
+
+  useEffect(() => {
+    if (!applyDefaultsOnMarketChange) return
+    const meta = marketsQuery.data?.markets?.find((m) => m.key === market)
+    if (!meta) return
+    const d = meta.defaults
+    setInitial(d.initial)
+    setSpend(d.spend)
+    setYears(d.years)
+    setInflationPct(d.inflation_pct)
+    setExpectedRealReturn(d.expected_real_return_pct)
+    setStillWorking(d.still_working)
+    setAnnualContrib(d.annual_contrib)
+    setIncomeAmount(d.income_amount)
+    setIncomeStartYear(d.income_start_year)
+    setStartDelayYears(d.start_delay_years)
+    setNPaths(d.n_paths)
+    setBlockSize(d.block_size)
+    setOtherIncomes([])
+    setExpenses([])
+    setValueUnits("real")
+    setApplyDefaultsOnMarketChange(false)
+  }, [applyDefaultsOnMarketChange, market, marketsQuery.data])
+
+  const handleMarketChange = (next: MarketCode) => {
+    setMarket(next)
+    setApplyDefaultsOnMarketChange(true)
+    setView("results")
+  }
+
   const baseYear = new Date().getFullYear()
+
   const toSeries = (res: any): SeriesPoint[] =>
     (res?.quantiles?.p90 || []).map((_: number, i: number) => ({
       month: i + 1,
@@ -104,8 +252,8 @@ export default function App() {
     const r = 1 + inflationPct / 100
     return base.map((p, idx) => {
       const tYears = (idx + 1) / 12
-      const f = Math.pow(r, tYears)
-      return { ...p, p10: p.p10 * f, p50: p.p50 * f, band: p.band * f }
+      const factor = Math.pow(r, tYears)
+      return { ...p, p10: p.p10 * factor, p50: p.p50 * factor, band: p.band * factor }
     })
   }
 
@@ -158,10 +306,10 @@ export default function App() {
 
   const fireTarget = fireTargetFromSpend(spend, 0.04)
   const estimatedYearsToFI = computeYearsToFI({ balance: initial, target: fireTarget, annualContrib, realReturnPct: expectedRealReturn })
+
   useEffect(() => {
     if (stillWorking) setStartDelayYears(estimatedYearsToFI)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initial, spend, annualContrib, expectedRealReturn, stillWorking])
+  }, [initial, spend, annualContrib, expectedRealReturn, stillWorking, estimatedYearsToFI])
 
   function applyPreset(name: "lean" | "baseline" | "fat") {
     if (name === "lean") {
@@ -225,10 +373,11 @@ export default function App() {
     try {
       p.set("x", encodeURIComponent(JSON.stringify(extras)))
     } catch {
-      // ignore
+      // ignore serialization
     }
     url.search = p.toString()
-    return url.toString()
+    const share = url.toString()
+    return share
   }
 
   async function copyShareLink() {
@@ -242,106 +391,24 @@ export default function App() {
     alert("Shareable link copied to clipboard")
   }
 
-  useEffect(() => {
-    const sp = new URLSearchParams(window.location.search)
-    if (!sp.size) {
-      setHasHydrated(true)
-      return
-    }
-    const num = (k: string, d: number) => {
-      const v = Number(sp.get(k))
-      return Number.isNaN(v) ? d : v
-    }
-    const str = (k: string, d: string) => sp.get(k) ?? d
-    const has = (k: string) => sp.has(k)
-    const m = str("m", "us") as MarketCode
-    skipNextMarketPreset.current = true
-    setMarket(m === "india" ? "india" : "us")
-    prevMarket.current = m === "india" ? "india" : "us"
-    setInitial(num("i", 1_000_000))
-    setSpend(num("s", 40_000))
-    setYears(num("y", 30))
-    setStillWorking(str("sw", "1") === "1")
-    setAnnualContrib(num("ac", 0))
-    setExpectedRealReturn(num("er", 5))
-    setStartDelayYears(num("sd", 0))
-    setIncomeAmount(num("ia", 0))
-    setIncomeStartYear(num("isy", 0))
-    const st = str("st", "fixed") as StrategyName
-    setStrategyName(st)
-    if (st === "variable_percentage" && has("vp")) setVpwPct(num("vp", 4))
-    if (st === "guardrails") {
-      setGuardBand(num("gb", 20))
-      setGuardStep(num("gs", 10))
-    }
-    setNPaths(num("np", 1000))
-    setBlockSize(num("bs", 12))
-    setInflationPct(num("inf", 3))
-    const vu = str("vu", "real")
-    setValueUnits(vu === "nominal" ? "nominal" : "real")
-    const age = num("age", 0)
-    if (age) setCurrentAge(age)
-    const x = sp.get("x")
-    if (x) {
-      try {
-        const obj = JSON.parse(decodeURIComponent(x))
-        if (obj.otherIncomes) setOtherIncomes(obj.otherIncomes)
-        if (obj.expenses) setExpenses(obj.expenses)
-      } catch {
-        // ignore malformed extras
-      }
-    }
-    setView("results")
-    setHasHydrated(true)
-  }, [])
+  const marketsLoaded = marketsQuery.status === "success" && !!marketMeta
 
-  useEffect(() => {
-    if (!hasHydrated) return
-    if (skipNextMarketPreset.current) {
-      skipNextMarketPreset.current = false
-      prevMarket.current = market
-      return
-    }
-    if (prevMarket.current === market) return
-    prevMarket.current = market
-    if (market === "india") {
-      setInitial(50_000_000)
-      setSpend(2_000_000)
-      setStillWorking(false)
-      setAnnualContrib(0)
-      setStartDelayYears(0)
-      setInflationPct(6)
-      setExpectedRealReturn(10)
-      setYears(16)
-      setIncomeAmount(0)
-      setIncomeStartYear(0)
-      setOtherIncomes([])
-      setExpenses([])
-    } else {
-      setInitial(1_000_000)
-      setSpend(40_000)
-      setStillWorking(true)
-      setAnnualContrib(0)
-      setStartDelayYears(0)
-      setInflationPct(3)
-      setExpectedRealReturn(5)
-      setYears(30)
-      setIncomeAmount(0)
-      setIncomeStartYear(0)
-      setOtherIncomes([])
-      setExpenses([])
-    }
-  }, [market, hasHydrated])
-
-  const handleMarketChange = (next: MarketCode) => {
-    skipNextMarketPreset.current = false
-    setMarket(next)
+  if (!marketsLoaded) {
+    return (
+      <div className="container" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div className="panel" style={{ maxWidth: 360 }}>
+          <h3 className="title">Loading markets</h3>
+          <p className="help">Fetching market metadata and defaults...</p>
+        </div>
+      </div>
+    )
   }
 
   if (view === "landing") {
     return (
       <Landing
         market={market}
+        markets={marketOptions}
         onMarketChange={handleMarketChange}
         currencyCode={currencyCode}
         initial={initial}
@@ -391,6 +458,7 @@ export default function App() {
         <aside>
           <Inputs
             market={market}
+            markets={marketOptions}
             onMarketChange={handleMarketChange}
             currencyCode={currencyCode}
             initial={initial}
@@ -436,28 +504,21 @@ export default function App() {
           />
         </aside>
         <main>
-          {errorMessage && (
-            <div className="panel panel-error">{errorMessage}</div>
-          )}
+          {errorMessage && <div className="panel panel-error">{errorMessage}</div>}
 
           <div className="panel highlights">
             <div className="highlights__row">
               <div className="badge">FIRE target (25×): {formatCurrency(fireTarget)}</div>
-              {stillWorking && (
-                <div className="badge badge-info">Estimated FI year: {baseYear + estimatedYearsToFI}</div>
-              )}
-              {hist && (
-                <div className="badge badge-success">Historical success: {hist.success_rate.toFixed(1)}%</div>
-              )}
-              {mc && (
-                <div className="badge badge-success">Monte Carlo success: {mc.success_rate.toFixed(1)}%</div>
-              )}
+              {stillWorking && <div className="badge badge-info">Estimated FI year: {baseYear + estimatedYearsToFI}</div>}
+              {hist && <div className="badge badge-success">Historical success: {hist.success_rate.toFixed(1)}%</div>}
+              {mc && <div className="badge badge-success">Monte Carlo success: {mc.success_rate.toFixed(1)}%</div>}
+              <ThemeToggle />
               <button className="btn btn-secondary btn-sm" style={{ marginLeft: "auto" }} onClick={copyShareLink}>
                 Save & share
               </button>
             </div>
             <div className="highlights__meta">
-              Market data refreshes automatically. Currently using {market === "india" ? "NIFTY 50 returns with India CPI" : "Ken French CRSP returns with US CPI"}.
+              Market data refreshes automatically. Source: {marketMeta?.source}. Coverage {marketMeta?.coverage.start} ? {marketMeta?.coverage.end} ({marketMeta?.coverage.months} months).
             </div>
           </div>
 
@@ -496,12 +557,12 @@ export default function App() {
                   <strong>You're FI-ready based on history.</strong> Success rate is at least 80%. Explore the range below.
                 </div>
               </div>
-              <ProjectionChart data={toSeriesWithUnits(hist)} title={`Historical projection (${unitLabel})`} retireAtMonths={startDelayYears * 12} currencyCode={currencyCode} />
-              <CashFlowTable rows={toCashFlowRows(hist)} title={`Detailed cashflow table (${unitLabel})`} currencyCode={currencyCode} />
-              <ProjectionChart data={toSeriesWithUnits(mc)} title={`Monte Carlo projection (${unitLabel})`} retireAtMonths={startDelayYears * 12} currencyCode={currencyCode} />
+              <ProjectionChart data={toSeriesWithUnits(hist)} title={Historical projection ()} retireAtMonths={startDelayYears * 12} currencyCode={currencyCode} />
+              <CashFlowTable rows={toCashFlowRows(hist)} title={Detailed cashflow table ()} currencyCode={currencyCode} />
+              <ProjectionChart data={toSeriesWithUnits(mc)} title={Monte Carlo projection ()} retireAtMonths={startDelayYears * 12} currencyCode={currencyCode} />
               <Histogram
                 values={valueUnits === "nominal" ? hist.ending_balances.map((v) => v * Math.pow(1 + inflationPct / 100, years)) : hist.ending_balances}
-                title={`Historical ending balances (${unitLabel})`}
+                title={Historical ending balances ()}
                 currencyCode={currencyCode}
               />
             </>
@@ -520,4 +581,7 @@ export default function App() {
     </div>
   )
 }
+
+
+
 

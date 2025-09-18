@@ -1,59 +1,52 @@
 from __future__ import annotations
 
-import os
-import time
 from functools import lru_cache
-from typing import Tuple
+from dataclasses import asdict
+from typing import Any, Dict, Tuple
 
 import pandas as pd
 
 from ..core.config import get_settings
-from .. import data_loader
+from ..markets import get_market_registry
+
+settings = get_settings()
+
+
+def _load_market(market: str, refresh: bool = False) -> Tuple[pd.DataFrame, Dict[str, str]]:
+    registry = get_market_registry()
+    definition = registry.get(market)
+    return definition.load(refresh=refresh, ttl_days=settings.cache_ttl_days)
 
 
 @lru_cache(maxsize=None)
-def _load_returns_cached(market: str) -> Tuple[pd.DataFrame, str]:
-    settings = get_settings()
-    return data_loader.get_market_real_returns(
-        market=market,
-        refresh=False,
-        ttl_days=settings.cache_ttl_days,
-    )
-
-
-def get_market_real_returns(market: str = "us", refresh: bool = False) -> Tuple[pd.DataFrame, str]:
-    """Load monthly real returns for the requested market with lightweight caching."""
-    market = market.lower()
-    if market not in data_loader.BUILDERS:
-        raise ValueError(f"Unsupported market '{market}'")
-
-    settings = get_settings()
-    cache_path = data_loader.CACHE_FILES.get(market)
-
+def get_market_real_returns(market: str = "us", refresh: bool = False) -> Tuple[pd.DataFrame, Dict[str, str]]:
     if refresh:
-        df, src = data_loader.get_market_real_returns(
-            market=market,
-            refresh=True,
-            ttl_days=settings.cache_ttl_days,
-        )
-        _load_returns_cached.cache_clear()
-        return df, src
+        get_market_real_returns.cache_clear()
+        return _load_market(market, refresh=True)
+    return _load_market(market)
 
-    ttl_seconds = settings.cache_ttl_days * 24 * 3600
-    cache_stale = True
-    if cache_path and os.path.exists(cache_path):
-        try:
-            cache_stale = (time.time() - os.path.getmtime(cache_path)) > ttl_seconds
-        except OSError:
-            cache_stale = True
 
-    if cache_stale:
-        df, src = data_loader.get_market_real_returns(
-            market=market,
-            refresh=True,
-            ttl_days=settings.cache_ttl_days,
-        )
-        _load_returns_cached.cache_clear()
-        return df, src
+def list_available_markets() -> Dict[str, Dict[str, Any]]:
+    registry = get_market_registry()
+    return {
+        key: get_market_metadata(key)
+        for key in registry.all().keys()
+    }
 
-    return _load_returns_cached(market)
+
+def get_market_metadata(market: str) -> Dict[str, Any]:
+    registry = get_market_registry()
+    definition = registry.get(market)
+    df, meta = get_market_real_returns(market)
+    coverage = {
+        "start": str(df["date"].min()),
+        "end": str(df["date"].max()),
+        "months": int(len(df)),
+    }
+    meta.update({
+        "defaults": asdict(definition.defaults),
+        "coverage": coverage,
+    })
+    return meta
+
+
