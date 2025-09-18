@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect } from "react"
 import Accordion from "./Accordion"
 import CurrencyInput from "./CurrencyInput"
 import NumberInput from "./NumberInput"
-import { FaCircleInfo, FaMinusCircle, FaXmark } from "react-icons/fa6"
+import { FaCircleInfo, FaCircleMinus, FaXmark } from "react-icons/fa6"
 
 import {
   SpendingCategoryPlan,
@@ -513,7 +513,7 @@ export default function Inputs({
                   aria-label="Remove category"
                   onClick={() => handleRemoveCategory(idx)}
                 >
-                  <FaMinusCircle aria-hidden="true" />
+                  <FaCircleMinus aria-hidden="true" />
                 </button>
               </div>
             ))}
@@ -615,7 +615,7 @@ export default function Inputs({
                   aria-label="Remove expense"
                   onClick={() => handleRemoveExpense(idx)}
                 >
-                  <FaMinusCircle aria-hidden="true" />
+                  <FaCircleMinus aria-hidden="true" />
                 </button>
               </div>
             )
@@ -724,7 +724,7 @@ export default function Inputs({
                   aria-label="Remove income"
                   onClick={() => handleRemoveIncome(idx)}
                 >
-                  <FaMinusCircle aria-hidden="true" />
+                  <FaCircleMinus aria-hidden="true" />
                 </button>
               </div>
             )
@@ -830,3 +830,4 @@ export default function Inputs({
     </div>
   )
 }
+
