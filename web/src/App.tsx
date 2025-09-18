@@ -29,7 +29,6 @@ export default function App() {
   const [incomeStartYear, setIncomeStartYear] = useState(0)
   const [stillWorking, setStillWorking] = useState(true)
   const [expectedRealReturn, setExpectedRealReturn] = useState(5)
-  const [assets, setAssets] = useState<{ name?: string; amount: number }[]>([])
   const [otherIncomes, setOtherIncomes] = useState<{ amount: number; start_year: number }[]>([])
   const [expenses, setExpenses] = useState<{ amount: number; at_year_from_now: number }[]>([])
   const [nPaths, setNPaths] = useState(1000)
@@ -52,8 +51,7 @@ export default function App() {
     income_start_year: incomeStartYear,
     other_incomes: otherIncomes,
     one_time_expenses: expenses,
-    assets,
-  }), [initial, spend, years, strategy, startDelayYears, annualContrib, incomeAmount, incomeStartYear, otherIncomes, expenses, assets])
+  }), [initial, spend, years, strategy, startDelayYears, annualContrib, incomeAmount, incomeStartYear, otherIncomes, expenses])
 
   const histQuery = useQuery({
     queryKey: ['historical', req],
@@ -99,7 +97,7 @@ export default function App() {
     const months = res.quantiles.p50.length
     const yearsCount = Math.floor(months / 12)
     const rows: CashFlowRow[] = []
-    const initialTotal = (assets?.length ? assets.reduce((s, a) => s + (Number(a.amount) || 0), 0) : initial)
+    const initialTotal = initial
     const vpct = vpwPct / 100
     const gBand = guardBand / 100
     const gStep = guardStep / 100
@@ -186,7 +184,7 @@ export default function App() {
     if (strategyName === 'guardrails') { p.set('gb', String(guardBand)); p.set('gs', String(guardStep)) }
     p.set('np', String(nPaths))
     p.set('bs', String(blockSize))
-    const extras = { assets, otherIncomes, expenses }
+    const extras = { otherIncomes, expenses }
     try { p.set('x', encodeURIComponent(JSON.stringify(extras))) } catch {}
     url.search = p.toString()
     return url.toString()
@@ -221,12 +219,11 @@ export default function App() {
     if (st === 'guardrails') { setGuardBand(num('gb', 20)); setGuardStep(num('gs', 10)) }
     setNPaths(num('np', 1000))
     setBlockSize(num('bs', 12))
-    // Extras (assets/incomes/expenses)
+    // Extras (incomes/expenses)
     const x = sp.get('x')
     if (x) {
       try {
         const obj = JSON.parse(decodeURIComponent(x))
-        if (obj.assets) setAssets(obj.assets)
         if (obj.otherIncomes) setOtherIncomes(obj.otherIncomes)
         if (obj.expenses) setExpenses(obj.expenses)
       } catch {}
@@ -250,7 +247,8 @@ export default function App() {
         incomeStartYear={incomeStartYear} onIncomeStartYear={setIncomeStartYear}
         stillWorking={stillWorking} onStillWorking={setStillWorking}
         expectedRealReturn={expectedRealReturn} onExpectedRealReturn={setExpectedRealReturn}
-        assets={assets} onAssetsChange={setAssets}
+        currentAge={currentAge} onCurrentAge={setCurrentAge}
+        inflationPct={inflationPct} onInflationPct={setInflationPct}
         otherIncomes={otherIncomes} onOtherIncomesChange={setOtherIncomes}
         expenses={expenses} onExpensesChange={setExpenses}
         onSimulate={() => setView('results')}
@@ -277,7 +275,6 @@ export default function App() {
           stillWorking={stillWorking} onStillWorking={setStillWorking}
           expectedRealReturn={expectedRealReturn} onExpectedRealReturn={setExpectedRealReturn}
           currentAge={currentAge} onCurrentAge={setCurrentAge}
-          assets={assets} onAssetsChange={setAssets}
           otherIncomes={otherIncomes} onOtherIncomesChange={setOtherIncomes}
           expenses={expenses} onExpensesChange={setExpenses}
           onRun={() => { histQuery.refetch(); mcQuery.refetch() }} running={loading}
@@ -302,12 +299,7 @@ export default function App() {
                 <button type="button" className={valueUnits === 'real' ? 'active' : ''} onClick={() => setValueUnits('real')}>Inflation adjusted</button>
                 <button type="button" className={valueUnits === 'nominal' ? 'active' : ''} onClick={() => setValueUnits('nominal')}>Actual values</button>
               </div>
-              {valueUnits === 'nominal' && (
-                <div className="hstack" style={{ gap: 6 }}>
-                  <label className="label" style={{ alignSelf: 'center' }}>Inflation %</label>
-                  <input className="input" style={{ width: 90 }} type="number" min={0} max={15} step={0.1} value={inflationPct} onChange={(e) => setInflationPct(Number(e.target.value))} />
-                </div>
-              )}
+              {/* Inflation moved into Inputs */}
             </div>
           </div>
 

@@ -19,6 +19,7 @@ export default function Inputs(props: {
   stillWorking: boolean; onStillWorking: (v: boolean) => void
   expectedRealReturn: number; onExpectedRealReturn: (v: number) => void
   currentAge?: number; onCurrentAge?: (v: number) => void
+  inflationPct?: number; onInflationPct?: (v: number) => void
   onApplyPreset?: (name: 'lean' | 'baseline' | 'fat') => void
   // Lists
   assets?: { name?: string; amount: number }[]; onAssetsChange?: (rows: { name?: string; amount: number }[]) => void
@@ -26,12 +27,11 @@ export default function Inputs(props: {
   expenses?: { amount: number; at_year_from_now: number }[]; onExpensesChange?: (rows: { amount: number; at_year_from_now: number }[]) => void
   onRun: () => void; running: boolean
 }) {
-  const { initial, onInitial, spend, onSpend, years, onYears, strategy, onStrategy, vpwPct, onVpwPct, guardBand, onGuardBand, guardStep, onGuardStep, startDelayYears, onStartDelay, annualContrib, onAnnualContrib, incomeAmount, onIncomeAmount, incomeStartYear, onIncomeStartYear, stillWorking, onStillWorking, expectedRealReturn, onExpectedRealReturn, currentAge = 0, onCurrentAge, onApplyPreset, assets = [], onAssetsChange, otherIncomes = [], onOtherIncomesChange, expenses = [], onExpensesChange, onRun, running } = props
+  const { initial, onInitial, spend, onSpend, years, onYears, strategy, onStrategy, vpwPct, onVpwPct, guardBand, onGuardBand, guardStep, onGuardStep, startDelayYears, onStartDelay, annualContrib, onAnnualContrib, incomeAmount, onIncomeAmount, incomeStartYear, onIncomeStartYear, stillWorking, onStillWorking, expectedRealReturn, onExpectedRealReturn, currentAge = 0, onCurrentAge, inflationPct = 3, onInflationPct, onApplyPreset, assets = [], onAssetsChange, otherIncomes = [], onOtherIncomesChange, expenses = [], onExpensesChange, onRun, running } = props
   return (
     <div className="panel vstack">
       <div>
-        <h3 className="title">Your FIRE Journey</h3>
-        <div className="subtitle">Start with where you are. We’ll estimate when you can retire, then test how robust that plan is across history.</div>
+        <h3 className="title">Your Plan</h3>
       </div>
 
       {/* Presets removed for a cleaner, minimal UI */}
@@ -40,6 +40,11 @@ export default function Inputs(props: {
 
       <label className="label">Annual Spending <InfoTip title="Annual spending (real)">Amount you plan to spend per year, in today's dollars. With real returns, a fixed withdrawal means purchasing power stays constant.</InfoTip></label>
       <CurrencyInput value={spend} onChange={onSpend} />
+
+      <div>
+        <label className="label">Inflation (expected %)</label>
+        <input className="input" type="number" min={0} max={15} step={0.1} value={inflationPct} onChange={(e) => onInflationPct?.(Number(e.target.value))} />
+      </div>
 
       <div className="row">
         <div>
@@ -174,7 +179,7 @@ export default function Inputs(props: {
         </Accordion>
       )}
 
-      {onAssetsChange && (
+      {false && onAssetsChange && (
         <Accordion title="Assets (sum to initial portfolio)">
           <div className="vstack">
             {assets.map((row, idx) => (
@@ -204,3 +209,5 @@ export default function Inputs(props: {
     </div>
   )
 }
+
+

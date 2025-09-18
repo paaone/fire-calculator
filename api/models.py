@@ -39,8 +39,7 @@ class SimRequest(BaseModel):
     other_incomes: list[dict] = Field(default_factory=list, description="[{amount, start_year}]")
     # One-time expenses at a year offset from now (simulation start)
     one_time_expenses: list[dict] = Field(default_factory=list, description="[{amount, at_year_from_now}]")
-    # Assets to sum into initial balance
-    assets: list[dict] = Field(default_factory=list, description="[{name?, amount}]")
+    # Assets were removed; initial balance is the single source of truth
 
 
 class MCRequest(SimRequest):

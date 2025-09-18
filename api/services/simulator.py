@@ -29,21 +29,10 @@ def _simulate_path_with_planning(
     income_start_year: int = 0,
     other_incomes: Optional[List[Dict]] = None,
     one_time_expenses: Optional[List[Dict]] = None,
-    assets: Optional[List[Dict]] = None,
 ) -> Tuple[np.ndarray, float]:
     months_total = (start_delay_years + years) * 12
     if months_total > len(monthly_returns):
         raise ValueError("Not enough monthly returns for requested horizon")
-    # If assets provided, sum to override initial
-    if assets:
-        total_assets = 0.0
-        for a in assets:
-            try:
-                total_assets += float(a.get("amount", 0.0))
-            except Exception:
-                pass
-        if total_assets > 0:
-            initial_balance = total_assets
     balance = float(initial_balance)
     balances = np.empty(months_total, dtype=float)
     spend_this_year = float(annual_spending)
@@ -120,7 +109,6 @@ def simulate_historical(
     income_start_year: int = 0,
     other_incomes: Optional[List[Dict]] = None,
     one_time_expenses: Optional[List[Dict]] = None,
-    assets: Optional[List[Dict]] = None,
 ) -> Dict:
     months = (start_delay_years + years) * 12
     r = returns.values.astype(float)
@@ -140,7 +128,6 @@ def simulate_historical(
             income_start_year,
             other_incomes,
             one_time_expenses,
-            assets,
         )
         windows.append(balances)
         endings.append(final_bal)
@@ -184,7 +171,6 @@ def simulate_monte_carlo(
     income_start_year: int = 0,
     other_incomes: Optional[List[Dict]] = None,
     one_time_expenses: Optional[List[Dict]] = None,
-    assets: Optional[List[Dict]] = None,
 ) -> Dict:
     months = (start_delay_years + years) * 12
     base = historical_returns.values.astype(float)
@@ -204,7 +190,6 @@ def simulate_monte_carlo(
             income_start_year,
             other_incomes,
             one_time_expenses,
-            assets,
         )
         windows.append(balances)
         endings.append(final_bal)

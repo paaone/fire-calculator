@@ -16,7 +16,6 @@ export interface SimRequest {
   // Extended inputs
   other_incomes?: { amount: number; start_year: number }[]
   one_time_expenses?: { amount: number; at_year_from_now: number }[]
-  assets?: { name?: string; amount: number }[]
 }
 
 export interface SimResult {
