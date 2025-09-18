@@ -2,15 +2,21 @@ import io
 import os
 import time
 import zipfile
-from datetime import datetime
-from typing import Tuple
+from typing import Dict, Literal, Tuple
 
-import numpy as np
 import pandas as pd
 import requests
 
 DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
-CACHE_FILE = os.path.join(DATA_DIR, "market_monthly_real.csv")
+MARKET_CODES = Literal["us", "india"]
+CACHE_FILES: Dict[str, str] = {
+    "us": os.path.join(DATA_DIR, "market_us_monthly_real.csv"),
+    "india": os.path.join(DATA_DIR, "market_india_monthly_real.csv"),
+}
+SOURCE_LABELS: Dict[str, str] = {
+    "us": "Ken French market + FRED CPI",
+    "india": "Yahoo Finance ^NSEI + FRED INDCPIALLMINMEI",
+}
 
 
 def _ensure_data_dir() -> None:
@@ -67,27 +73,69 @@ def _download_french_market_monthly() -> pd.DataFrame:
     return df
 
 
-def _download_cpi_monthly() -> pd.DataFrame:
-    """
-    Download CPI (CPIAUCSL) monthly from FRED and compute monthly inflation rate.
-    Returns DataFrame with ['date', 'inflation'] where date is pandas Period (M).
-    """
-    url = "https://fred.stlouisfed.org/graph/fredgraph.csv?id=CPIAUCSL"
+def _download_fred_series(series_id: str) -> pd.DataFrame:
+    """Generic loader for a monthly FRED series returning ['date','value']."""
+    url = f"https://fred.stlouisfed.org/graph/fredgraph.csv?id={series_id}"
     resp = requests.get(url, timeout=30)
     resp.raise_for_status()
     df = pd.read_csv(io.StringIO(resp.text))
-    # Expected columns: observation_date, CPIAUCSL
-    df = df.rename(columns={"observation_date": "date", "DATE": "date", "CPIAUCSL": "cpi"})
-    df["date"] = pd.to_datetime(df["date"]).dt.to_period("M")
-    df["cpi"] = pd.to_numeric(df["cpi"], errors="coerce")
-    df = df.dropna()
-    df = df.sort_values("date")
-    df["inflation"] = df["cpi"].pct_change()
-    df = df.dropna(subset=["inflation"]).loc[:, ["date", "inflation"]]
+    df.columns = [c.strip() for c in df.columns]
+    if "observation_date" in df.columns:
+        df = df.rename(columns={"observation_date": "date"})
+    elif "DATE" in df.columns:
+        df = df.rename(columns={"DATE": "date"})
+    else:
+        raise RuntimeError(f"Unexpected columns for FRED series {series_id}: {df.columns}")
+    value_col = next((c for c in df.columns if c != "date"), None)
+    if not value_col:
+        raise RuntimeError(f"No value column for FRED series {series_id}")
+    df = df.rename(columns={value_col: "value"})
+    df["date"] = pd.to_datetime(df["date"], errors="coerce").dt.to_period("M")
+    df["value"] = pd.to_numeric(df["value"], errors="coerce")
+    df = df.dropna(subset=["date", "value"])
     return df
 
 
-def build_market_real_returns() -> pd.DataFrame:
+def _download_cpi_monthly(series_id: str) -> pd.DataFrame:
+    """
+    Download CPI monthly from FRED and compute monthly inflation rate.
+    Returns DataFrame with ['date', 'inflation'].
+    """
+    df = _download_fred_series(series_id)
+    df = df.sort_values("date")
+    df["inflation"] = df["value"].pct_change()
+    return df.dropna(subset=["inflation"])[["date", "inflation"]]
+
+
+def _download_yahoo_monthly(symbol: str) -> pd.DataFrame:
+    """Load monthly adjusted close data for an index from Yahoo Finance."""
+    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}"
+    params = {"interval": "1mo", "range": "max", "includeAdjustedClose": "true"}
+    headers = {"User-Agent": "fire-calculator/1 (+https://github.com/)"}
+    resp = requests.get(url, params=params, headers=headers, timeout=30)
+    resp.raise_for_status()
+    payload = resp.json()
+    result = payload.get("chart", {}).get("result")
+    if not result:
+        error = payload.get("chart", {}).get("error", {})
+        raise RuntimeError(f"Yahoo Finance returned no data for {symbol}: {error}")
+    chart = result[0]
+    timestamps = chart.get("timestamp") or []
+    adj_payload = chart.get("indicators", {}).get("adjclose") or []
+    if not timestamps or not adj_payload:
+        raise RuntimeError(f"Yahoo Finance missing adjclose for {symbol}")
+    adj_values = adj_payload[0].get("adjclose") or []
+    if not adj_values:
+        raise RuntimeError(f"Yahoo Finance returned empty adjclose for {symbol}")
+    df = pd.DataFrame({"timestamp": timestamps, "adjclose": adj_values})
+    df = df.dropna(subset=["adjclose"])
+    df["date"] = pd.to_datetime(df["timestamp"], unit="s").dt.to_period("M")
+    df = df.groupby("date", as_index=False).last().sort_values("date")
+    df["return"] = df["adjclose"].pct_change()
+    return df.dropna(subset=["return"])[["date", "return"]]
+
+
+def build_market_real_returns_us() -> pd.DataFrame:
     """
     Build a DataFrame of monthly real total US stock market returns using
     Ken French market (CRSP value-weighted) and CPI from FRED.
@@ -95,7 +143,7 @@ def build_market_real_returns() -> pd.DataFrame:
     Returns DataFrame with columns ['date','real_return'].
     """
     mkt = _download_french_market_monthly()
-    cpi = _download_cpi_monthly()
+    cpi = _download_cpi_monthly("CPIAUCSL")
     df = pd.merge(mkt, cpi, on="date", how="inner")
     # Nominal market: Mkt = (Mkt-RF + RF)
     df["mkt_nominal"] = df["mkt_rf"] + df["rf"]
@@ -105,29 +153,54 @@ def build_market_real_returns() -> pd.DataFrame:
     return out.dropna()
 
 
-def get_market_real_returns(refresh: bool = False) -> Tuple[pd.DataFrame, str]:
+def build_market_real_returns_india() -> pd.DataFrame:
+    """Build monthly real returns for India using NIFTY 50 and CPI."""
+    idx = _download_yahoo_monthly("%5ENSEI")
+    cpi = _download_cpi_monthly("INDCPIALLMINMEI")
+    df = pd.merge(idx, cpi, on="date", how="inner")
+    df["real_return"] = (1.0 + df["return"]) / (1.0 + df["inflation"]) - 1.0
+    out = df.loc[:, ["date", "real_return"]].copy()
+    # Drop unreasonably large magnitude outliers that indicate data quality issues
+    out = out[(out["real_return"].abs() < 3)].copy()
+    return out.dropna()
+
+
+BUILDERS = {
+    "us": build_market_real_returns_us,
+    "india": build_market_real_returns_india,
+}
+
+
+def get_market_real_returns(market: MARKET_CODES = "us", refresh: bool = False, ttl_days: int = 30) -> Tuple[pd.DataFrame, str]:
     """
-    Load or build the monthly real returns for the US market.
+    Load or build the monthly real returns for the requested market.
     - If cached CSV exists (and not too old), load it.
     - Otherwise, download and compute, then cache.
 
-    Returns (df, source), where source is 'cache' or 'download'.
+    Returns (df, source), where source includes the data providers used.
     """
+    market = market.lower()
+    if market not in BUILDERS:
+        raise ValueError(f"Unsupported market '{market}'")
+
     _ensure_data_dir()
-    if os.path.exists(CACHE_FILE) and not refresh:
+    cache_path = CACHE_FILES[market]
+    if os.path.exists(cache_path) and not refresh:
         try:
             # Consider cache fresh if modified within last 30 days
-            mtime = os.path.getmtime(CACHE_FILE)
-            if time.time() - mtime < 30 * 24 * 3600:
-                df = pd.read_csv(CACHE_FILE)
+            mtime = os.path.getmtime(cache_path)
+            if time.time() - mtime < ttl_days * 24 * 3600:
+                df = pd.read_csv(cache_path)
                 df["date"] = pd.to_datetime(df["date"]).dt.to_period("M")
                 return df, "cache"
         except Exception:
             pass
 
-    df = build_market_real_returns()
-    # Save as YYYY-MM string for readability
+    builder = BUILDERS[market]
+    df = builder()
     to_save = df.copy()
     to_save["date"] = to_save["date"].dt.to_timestamp().dt.strftime("%Y-%m-%d")
-    to_save.to_csv(CACHE_FILE, index=False)
-    return df, "download"
+    to_save.to_csv(cache_path, index=False)
+    return df, SOURCE_LABELS.get(market, "download")
+
+

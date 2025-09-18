@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field, field_validator
 
 
 StrategyType = Literal["fixed", "variable_percentage", "guardrails"]
+MarketType = Literal["us", "india"]
 
 
 class StrategyModel(BaseModel):
@@ -12,8 +13,8 @@ class StrategyModel(BaseModel):
     percentage: Optional[float] = Field(
         None, description="For variable_percentage, annual fraction of balance (e.g., 0.04)"
     )
-    guard_band: Optional[float] = Field(0.20, description="±band of initial WR for guardrails")
-    adjust_step: Optional[float] = Field(0.10, description="±adjust step for guardrails")
+    guard_band: Optional[float] = Field(0.20, description="Band of initial withdrawal rate tolerated for guardrails")
+    adjust_step: Optional[float] = Field(0.10, description="Step size used when adjusting guardrails withdrawals")
 
     @field_validator("percentage")
     @classmethod
@@ -26,6 +27,7 @@ class StrategyModel(BaseModel):
 
 
 class SimRequest(BaseModel):
+    market: MarketType = Field("us", description="Market regime for historical return sampling")
     initial: float = Field(1_000_000, ge=0)
     spend: float = Field(40_000, ge=0)
     years: int = Field(30, ge=1, le=60)

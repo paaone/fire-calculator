@@ -1,24 +1,25 @@
-import { useEffect, useMemo, useState } from 'react'
-
-function formatCurrency(n: number | null): string {
-  if (n === null || isNaN(n)) return ''
-  return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n)
-}
+import { useEffect, useMemo, useState } from "react"
 
 function parseCurrency(input: string): number | null {
-  // Remove everything except digits
-  const digits = input.replace(/[^0-9]/g, '')
+  const digits = input.replace(/[^0-9]/g, "")
   if (!digits) return 0
   const n = Number(digits)
-  return isNaN(n) ? null : n
+  return Number.isNaN(n) ? null : n
 }
 
-export default function CurrencyInput({ value, onChange, placeholder }: { value: number; onChange: (v: number) => void; placeholder?: string }) {
+export default function CurrencyInput({ value, onChange, placeholder, currency = "USD" }: { value: number; onChange: (v: number) => void; placeholder?: string; currency?: string }) {
+  const formatter = useMemo(() => new Intl.NumberFormat(undefined, { style: "currency", currency, maximumFractionDigits: 0 }), [currency])
+
+  const formatCurrency = (n: number | null) => {
+    if (n === null || Number.isNaN(n)) return ""
+    return formatter.format(n)
+  }
+
   const [text, setText] = useState<string>(formatCurrency(value ?? 0))
 
   useEffect(() => {
     setText(formatCurrency(value ?? 0))
-  }, [value])
+  }, [value, formatter])
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const raw = e.target.value
@@ -29,7 +30,6 @@ export default function CurrencyInput({ value, onChange, placeholder }: { value:
   }
 
   function handleFocus(e: React.FocusEvent<HTMLInputElement>) {
-    // Select all for quick overwrite
     e.currentTarget.select()
   }
 
@@ -43,5 +43,5 @@ export default function CurrencyInput({ value, onChange, placeholder }: { value:
       onFocus={handleFocus}
       placeholder={placeholder}
     />
-  )}
-
+  )
+}

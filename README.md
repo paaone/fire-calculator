@@ -1,43 +1,41 @@
 # Modern FIRE Calculator
 
-A modern, full‚Äëstack FIRE calculator prototype with a FastAPI backend and a React + TypeScript frontend. It backtests against real US total market returns and includes a Monte Carlo simulator with flexible withdrawal strategies.
+A modern full-stack FIRE calculator with a FastAPI backend and a React + TypeScript frontend. It now supports both US and India market histories and lets you toggle which market drives the simulations.
 
-## What‚Äôs Included
+## Whatís Included
 
-- Backend (`api/`): FastAPI service that
-  - Downloads and caches real monthly US market returns (CRSP value‚Äëweighted "market" from the Kenneth French library combined with CPI from FRED) to `data/market_monthly_real.csv`.
-  - Endpoints for historical backtesting and Monte Carlo simulations.
-  - Strategies: fixed real withdrawals, variable‚Äëpercentage (VPW), and guardrails (Guyton‚ÄìKlinger style adjustment).
-- Frontend (`web/`): Vite + React app with interactive inputs and charts (Recharts)
-  - Projection charts showing P10/P50/P90 quantiles over time.
-  - Histogram of ending balances.
+- **Backend (`api/`)**: FastAPI service that
+  - Downloads and caches monthly real returns for the selected market. The US feed combines the Ken French CRSP market factor with CPIAUCSL. The India feed pulls NIFTY 50 monthly closes from Yahoo Finance and deflates with India CPI (INDCPIALLMINMEI).
+  - Exposes endpoints for historical sequence backtesting and block-bootstrap Monte Carlo simulations.
+  - Withdrawal strategies: fixed real withdrawals, variable-percentage (VPW), and guardrails (GuytonñKlinger style adjustments).
+- **Frontend (`web/`)**: Vite + React app with a refreshed, responsive UI
+  - Market selector (US ? India) that updates the entire analysis.
+  - Projection charts (P10/P50/P90), a cash-flow table, and an ending balance histogram with improved layout.
 
 ## Run It
 
 Prereqs: Python 3.10+ and Node 18+.
 
-1) Backend
+1. **Backend**
+   - `pip install -r requirements.txt`
+   - `python -m uvicorn api.main:app --reload --port 8000`
 
-- Install deps: `pip install -r requirements.txt`
-- Start API: `python -m uvicorn api.main:app --reload --port 8000`
+   The first run downloads the chosen market data and writes a cache file under `data/` (`market_us_monthly_real.csv` or `market_india_monthly_real.csv`).
 
-The first run downloads market and CPI data and writes `data/market_monthly_real.csv`.
+2. **Frontend**
+   - `cd web`
+   - `npm install`
+   - `npm run dev`
 
-2) Frontend
-
-- `cd web`
-- `npm install`
-- Dev server: `npm run dev` (http://localhost:5173)
-
-The UI calls the API at `http://localhost:8000`.
+The UI expects the API at `http://localhost:8000` (override with `VITE_API_BASE`).
 
 ## API
 
-- `GET /api/returns/meta` ‚Üí dataset coverage summary
-- `POST /api/simulate/historical`
-  - body: `{ initial, spend, years, strategy }`
-- `POST /api/simulate/montecarlo`
-  - body: `{ initial, spend, years, strategy, n_paths?, block_size? }`
+- `GET /api/v1/returns/meta?market=us|india` ó dataset coverage summary for the chosen market.
+- `POST /api/v1/simulate/historical`
+  - body: `{ market, initial, spend, years, strategy, Ö }`
+- `POST /api/v1/simulate/montecarlo`
+  - body: `{ market, initial, spend, years, strategy, n_paths?, block_size?, Ö }`
 
 Strategy shapes:
 
@@ -49,14 +47,12 @@ Responses include success rate, ending balances, and monthly quantiles (P10/P50/
 
 ## CLI Prototype (optional)
 
-`firecalc.py` remains for quick CLI testing and now defaults to the real dataset:
+`firecalc.py` remains for quick CLI testing. Point it at the cached market data you want to use:\n\n```bash\npython firecalc.py --data data/market_india_monthly_real.csv --initial 1000000 --spend 40000 --years 30\n```
 
-```bash
-python firecalc.py --initial 1000000 --spend 40000 --years 30
-```
+## Data Sources
 
-## Notes on Data
+- **US market**: Ken French ìF-F Research Data Factorsî monthly file (CRSP value-weighted market). Real returns are computed with CPIAUCSL from FRED.
+- **India market**: Yahoo Finance monthly data for the NIFTY 50 index (`^NSEI`) with adjusted closes. Real returns use India CPI (INDCPIALLMINMEI) from FRED.
+- Cached CSVs live under `data/` and refresh automatically (default TTL: 30 days).
 
-- Market returns come from the Kenneth French ‚ÄúF‚ÄëF Research Data Factors‚Äù monthly file (CRSP value‚Äëweighted market). Nominal returns are converted to real using CPI (FRED CPIAUCSL monthly). Coverage is 1947‚Äëpresent.
-- The old synthetic dataset (`generate_data.py`, `data/sp500_monthly.csv`) is kept for reference but no longer used by default.
 

@@ -8,31 +8,52 @@ from typing import Tuple
 import pandas as pd
 
 from ..core.config import get_settings
-from .. import data_loader as legacy
+from .. import data_loader
 
 
-DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "..", "data")
-CACHE_FILE = os.path.normpath(os.path.join(os.path.dirname(os.path.dirname(__file__)), "..", "data", "market_monthly_real.csv"))
-
-
-def _cache_is_fresh(path: str, ttl_days: int) -> bool:
-    try:
-        mtime = os.path.getmtime(path)
-        return (time.time() - mtime) < (ttl_days * 24 * 3600)
-    except Exception:
-        return False
-
-
-@lru_cache(maxsize=1)
-def get_market_real_returns(refresh: bool = False) -> Tuple[pd.DataFrame, str]:
-    """Load real US market monthly returns, using cached CSV if reasonably fresh."""
+@lru_cache(maxsize=None)
+def _load_returns_cached(market: str) -> Tuple[pd.DataFrame, str]:
     settings = get_settings()
-    if os.path.exists(CACHE_FILE) and not refresh and _cache_is_fresh(CACHE_FILE, settings.cache_ttl_days):
-        df = pd.read_csv(CACHE_FILE)
-        df["date"] = pd.to_datetime(df["date"]).dt.to_period("M")
-        return df, "cache"
+    return data_loader.get_market_real_returns(
+        market=market,
+        refresh=False,
+        ttl_days=settings.cache_ttl_days,
+    )
 
-    # Fall back to legacy builder which downloads and writes the cache file
-    df, src = legacy.get_market_real_returns(refresh=True)
-    return df, src
 
+def get_market_real_returns(market: str = "us", refresh: bool = False) -> Tuple[pd.DataFrame, str]:
+    """Load monthly real returns for the requested market with lightweight caching."""
+    market = market.lower()
+    if market not in data_loader.BUILDERS:
+        raise ValueError(f"Unsupported market '{market}'")
+
+    settings = get_settings()
+    cache_path = data_loader.CACHE_FILES.get(market)
+
+    if refresh:
+        df, src = data_loader.get_market_real_returns(
+            market=market,
+            refresh=True,
+            ttl_days=settings.cache_ttl_days,
+        )
+        _load_returns_cached.cache_clear()
+        return df, src
+
+    ttl_seconds = settings.cache_ttl_days * 24 * 3600
+    cache_stale = True
+    if cache_path and os.path.exists(cache_path):
+        try:
+            cache_stale = (time.time() - os.path.getmtime(cache_path)) > ttl_seconds
+        except OSError:
+            cache_stale = True
+
+    if cache_stale:
+        df, src = data_loader.get_market_real_returns(
+            market=market,
+            refresh=True,
+            ttl_days=settings.cache_ttl_days,
+        )
+        _load_returns_cached.cache_clear()
+        return df, src
+
+    return _load_returns_cached(market)

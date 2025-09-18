@@ -1,8 +1,4 @@
-import React from 'react'
-
-function currency(n: number) {
-  return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n)
-}
+import React, { useMemo } from "react"
 
 export interface CashFlowRow {
   year: number
@@ -15,24 +11,27 @@ export interface CashFlowRow {
   cashFlow: number
 }
 
-export default function CashFlowTable({ rows, title }: { rows: CashFlowRow[]; title?: string }) {
+export default function CashFlowTable({ rows, title, currencyCode = "USD" }: { rows: CashFlowRow[]; title?: string; currencyCode?: string }) {
+  const formatter = useMemo(() => new Intl.NumberFormat(undefined, { style: "currency", currency: currencyCode, maximumFractionDigits: 0 }), [currencyCode])
+  const currency = (n: number) => formatter.format(n)
+
   if (!rows?.length) return null
   return (
     <div className="panel">
-      <div className="hstack" style={{ justifyContent: 'space-between', marginBottom: 8 }}>
-        <div style={{ fontWeight: 600 }}>{title ?? 'Projection table'}</div>
+      <div className="hstack" style={{ justifyContent: "space-between", marginBottom: 8 }}>
+        <div style={{ fontWeight: 600 }}>{title ?? "Projection table"}</div>
       </div>
       <div className="table-wrap">
         <table className="table">
           <thead>
             <tr>
-              <th>Year/Age</th>
-              <th>Starting Portfolio Value (Median)</th>
-              <th>Starting Portfolio Value (10th Percentile)</th>
-              <th>Basic Saving or Retirement Spending</th>
-              <th>Other Spending Goals</th>
-              <th>Other Income Events</th>
-              <th>Cash Flow</th>
+              <th>Year / Age</th>
+              <th>Starting Balance (Median)</th>
+              <th>Starting Balance (10th %)</th>
+              <th>Basic Spend / Save</th>
+              <th>Other Spending</th>
+              <th>Other Income</th>
+              <th>Net Cash Flow</th>
             </tr>
           </thead>
           <tbody>

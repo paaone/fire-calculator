@@ -1,10 +1,29 @@
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { useMemo } from "react"
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
 
-function currency(n: number) {
-  return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n)
+type Props = {
+  values: number[]
+  bins?: number
+  title?: string
+  currencyCode?: string
 }
 
-export default function Histogram({ values, bins = 30, title }: { values: number[]; bins?: number; title?: string }) {
+export default function Histogram({ values, bins = 30, title, currencyCode = "USD" }: Props) {
+  const currencyFormatter = useMemo(
+    () => new Intl.NumberFormat(undefined, { style: "currency", currency: currencyCode, maximumFractionDigits: 0 }),
+    [currencyCode],
+  )
+  const axisFormatter = useMemo(
+    () =>
+      new Intl.NumberFormat(undefined, {
+        style: "currency",
+        currency: currencyCode,
+        notation: "compact",
+        maximumFractionDigits: 1,
+      }),
+    [currencyCode],
+  )
+
   if (!values.length) return null
   const min = Math.min(...values)
   const max = Math.max(...values)
@@ -20,17 +39,32 @@ export default function Histogram({ values, bins = 30, title }: { values: number
     count,
   }))
   return (
-    <div className="panel" style={{ width: '100%', height: 280 }}>
-      <div style={{ fontWeight: 600, marginBottom: 8 }}>{title ?? 'Ending Balance Distribution'}</div>
-      <ResponsiveContainer>
-        <BarChart data={data} margin={{ left: 8, right: 8, top: 10, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="x0" tickFormatter={(v) => currency(Number(v))} interval={Math.max(0, Math.floor(bins / 6))} />
-          <YAxis />
-          <Tooltip formatter={(v: any) => String(v)} labelFormatter={(x0) => currency(Number(x0))} />
-          <Bar dataKey="count" fill="#3b82f6" />
-        </BarChart>
-      </ResponsiveContainer>
+    <div className="panel chart-card">
+      <div className="chart-card__header">
+        <div style={{ fontWeight: 600 }}>{title ?? "Ending balance distribution"}</div>
+      </div>
+      <div className="chart-card__body">
+        <ResponsiveContainer>
+          <BarChart data={data} margin={{ left: 16, right: 16, top: 16, bottom: 36 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+            <XAxis
+              dataKey="x0"
+              tickFormatter={(v) => axisFormatter.format(Number(v))}
+              tickLine={false}
+              axisLine={false}
+              interval={Math.max(0, Math.floor(bins / 6))}
+              dy={8}
+            />
+            <YAxis tickLine={false} axisLine={false} width={60} allowDecimals={false} />
+            <Tooltip
+              formatter={(value: any) => String(value)}
+              labelFormatter={(x0) => currencyFormatter.format(Number(x0))}
+              contentStyle={{ borderRadius: 10, borderColor: "#e2e8f0" }}
+            />
+            <Bar dataKey="count" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   )
 }

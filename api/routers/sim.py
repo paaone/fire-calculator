@@ -12,16 +12,16 @@ router = APIRouter(tags=["simulation"])
 
 
 @router.get("/returns/meta")
-def returns_meta() -> Dict[str, Any]:
-    df, source = get_market_real_returns()
+def returns_meta(market: str = "us") -> Dict[str, Any]:
+    df, source = get_market_real_returns(market=market)
     start = str(df["date"].min())
     end = str(df["date"].max())
-    return {"source": source, "start": start, "end": end, "months": int(len(df))}
+    return {"source": source, "start": start, "end": end, "months": int(len(df)), "market": market}
 
 
 @router.post("/simulate/historical")
 def simulate_historical_api(req: SimRequest) -> Dict[str, Any]:
-    df, _ = get_market_real_returns()
+    df, _ = get_market_real_returns(market=req.market)
     strategy = Strategy(
         type=req.strategy.type,
         percentage=req.strategy.percentage,
@@ -45,7 +45,7 @@ def simulate_historical_api(req: SimRequest) -> Dict[str, Any]:
 
 @router.post("/simulate/montecarlo")
 def simulate_montecarlo_api(req: MCRequest) -> Dict[str, Any]:
-    df, _ = get_market_real_returns()
+    df, _ = get_market_real_returns(market=req.market)
     strategy = Strategy(
         type=req.strategy.type,
         percentage=req.strategy.percentage,

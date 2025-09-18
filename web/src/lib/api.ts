@@ -1,9 +1,12 @@
+export type MarketCode = "us" | "india"
+
 export type Strategy =
-  | { type: 'fixed' }
-  | { type: 'variable_percentage'; percentage: number }
-  | { type: 'guardrails'; guard_band: number; adjust_step: number }
+  | { type: "fixed" }
+  | { type: "variable_percentage"; percentage: number }
+  | { type: "guardrails"; guard_band: number; adjust_step: number }
 
 export interface SimRequest {
+  market: MarketCode
   initial: number
   spend: number
   years: number
@@ -27,12 +30,12 @@ export interface SimResult {
   sample_path: number[]
 }
 
-const API_BASE = (import.meta as any).env?.VITE_API_BASE || 'http://localhost:8000'
+const API_BASE = (import.meta as any).env?.VITE_API_BASE || "http://localhost:8000"
 
 export async function fetchHistorical(req: SimRequest): Promise<SimResult> {
   const res = await fetch(`${API_BASE}/api/v1/simulate/historical`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(req),
   })
   if (!res.ok) throw new Error(`Historical sim failed: ${res.status}`)
@@ -42,8 +45,8 @@ export async function fetchHistorical(req: SimRequest): Promise<SimResult> {
 export async function fetchMonteCarlo(req: SimRequest & { n_paths?: number; block_size?: number }): Promise<SimResult> {
   const payload = { n_paths: 1000, block_size: 12, ...req }
   const res = await fetch(`${API_BASE}/api/v1/simulate/montecarlo`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   })
   if (!res.ok) throw new Error(`Monte Carlo sim failed: ${res.status}`)
