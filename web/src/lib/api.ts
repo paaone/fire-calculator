@@ -68,7 +68,7 @@ export interface SimResult {
 const API_BASE = (import.meta as any).env?.VITE_API_BASE || "http://localhost:8000"
 
 async function throwFromResponse(res: Response, fallback: string): Promise<never> {
-  let message = ${fallback} ()
+  let message = `${fallback} (${res.status})`
   try {
     const text = await res.text()
     if (text) {
@@ -94,7 +94,7 @@ async function throwFromResponse(res: Response, fallback: string): Promise<never
 }
 
 async function request<T>(path: string, init?: RequestInit, fallbackError = "Request failed"): Promise<T> {
-  const res = await fetch(${API_BASE}, init)
+  const res = await fetch(`${API_BASE}${path}`, init)
   if (!res.ok) {
     await throwFromResponse(res, fallbackError)
   }
