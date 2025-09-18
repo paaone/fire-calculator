@@ -34,14 +34,17 @@ import {
 
 const DEFAULT_MARKET: MarketCode = "us"
 
+const STAR_EMOJI = String.fromCodePoint(0x2B50)
+const RETIREMENT_EMOJI = String.fromCodePoint(0x1F334)
+
 const EXPENSE_EMOJI: Record<FutureExpensePlan["category"], string> = {
-  home_project: "🏠",
-  vehicle: "🚗",
-  education: "🎓",
-  healthcare: "🩺",
-  travel: "✈️",
-  wedding: "💍",
-  other: "⭐",
+  home_project: String.fromCodePoint(0x1F3E0),
+  vehicle: String.fromCodePoint(0x1F697),
+  education: String.fromCodePoint(0x1F393),
+  healthcare: `${String.fromCodePoint(0x2695)}️`,
+  travel: `${String.fromCodePoint(0x2708)}️`,
+  wedding: String.fromCodePoint(0x1F48D),
+  other: STAR_EMOJI,
 }
 
 const EXPENSE_LABEL_FALLBACK: Record<FutureExpensePlan["category"], string> = {
@@ -55,7 +58,7 @@ const EXPENSE_LABEL_FALLBACK: Record<FutureExpensePlan["category"], string> = {
 }
 
 function expenseEmoji(category: FutureExpensePlan["category"]): string {
-  return EXPENSE_EMOJI[category] ?? "⭐"
+  return EXPENSE_EMOJI[category] ?? STAR_EMOJI
 }
 
 function expenseLabel(category: FutureExpensePlan["category"], label?: string): string {
@@ -398,8 +401,9 @@ export default function App() {
       }
     }
 
-    if (stillWorking && startDelayYears > 0) {
-      addMilestone(baseYear + startDelayYears, "🌴", "Retirement", true)
+    if (stillWorking) {
+      const retirementYear = baseYear + Math.max(0, Math.round(startDelayYears))
+      addMilestone(retirementYear, "ð´", "Retirement", true)
     }
 
     futureExpenses
