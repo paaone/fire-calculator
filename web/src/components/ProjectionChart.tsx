@@ -10,14 +10,21 @@ export interface SeriesPoint {
   band: number
 }
 
+export type ChartMilestone = {
+  year: number
+  label: string
+  emoji: string
+  drawLine?: boolean
+}
+
 type Props = {
   data: SeriesPoint[]
   title?: string
-  retireAtMonths?: number
   currencyCode?: string
+  milestones?: ChartMilestone[]
 }
 
-export default function ProjectionChart({ data, title, retireAtMonths, currencyCode = "USD" }: Props) {
+export default function ProjectionChart({ data, title, currencyCode = "USD", milestones = [] }: Props) {
   const locale = currencyCode === "INR" ? "en-IN" : undefined
   const currencyFormatter = useMemo(
     () => new Intl.NumberFormat(locale ?? undefined, { style: "currency", currency: currencyCode, maximumFractionDigits: 0 }),
@@ -57,15 +64,21 @@ export default function ProjectionChart({ data, title, retireAtMonths, currencyC
               axisLine={false}
             />
             <Tooltip content={<TooltipContent format={currencyFormatter.format} />} cursor={{ stroke: "#94a3b8", strokeDasharray: "4 4" }} />
-            {retireAtMonths && retireAtMonths > 0 && data.length > 0 && (
-              <ReferenceLine
-                x={data[0].year + Math.floor(retireAtMonths / 12)}
-                stroke="#94a3b8"
-                strokeWidth={2}
-                strokeDasharray="4 3"
-                label={{ value: "Retire", position: "insideTop", fill: "#64748b" }}
-              />
-            )}
+            {milestones.map((marker) => {
+              const lineStroke = marker.drawLine ? "#94a3b8" : "rgba(148, 163, 184, 0.001)"
+              const dash = marker.drawLine ? "4 3" : undefined
+              const labelValue = marker.label ? `${marker.emoji} ${marker.label}` : marker.emoji
+              return (
+                <ReferenceLine
+                  key={`${marker.year}-${marker.label}`}
+                  x={marker.year}
+                  stroke={lineStroke}
+                  strokeWidth={marker.drawLine ? 2 : 0}
+                  strokeDasharray={dash}
+                  label={{ value: labelValue, position: "insideTop", fill: "#94a3b8", fontSize: 13 }}
+                />
+              )
+            })}
             <Area type="monotone" dataKey="p10" stroke="#93c5fd" strokeWidth={2} fillOpacity={0} dot={false} stackId="band" />
             <Area type="monotone" dataKey="band" stroke="#1e88e5" strokeWidth={2} fill="url(#colorBand)" dot={false} stackId="band" />
             <Area type="monotone" dataKey="p50" stroke="#0ea5e9" strokeWidth={2.4} fillOpacity={0} dot={false} />

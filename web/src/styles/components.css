@@ -98,10 +98,24 @@
   width: 100%;
   padding: 12px 14px;
   border-radius: 12px;
-  background: #fff;
+  background: var(--input-bg);
   border: 1px solid var(--border);
   color: var(--text);
   font-size: 15px;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.input:focus,
+.select:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 0;
+  background: var(--input-bg-muted);
+  border-color: var(--accent);
+}
+
+.input::placeholder,
+.select::placeholder {
+  color: var(--muted);
 }
 
 .btn {
@@ -196,7 +210,7 @@
 .switch,
 .segmented {
   display: inline-flex;
-  background: #f1f5f9;
+  background: var(--input-bg-muted);
   border-radius: 999px;
   border: 1px solid var(--border);
   padding: 4px;
@@ -210,14 +224,14 @@
   border-radius: 999px;
   padding: 6px 12px;
   font-size: 13px;
-  color: #1f2937;
+  color: var(--text);
   cursor: pointer;
   transition: background 0.15s ease, color 0.15s ease;
 }
 
 .segmented button.active,
 .switch button.active {
-  background: #2563eb;
+  background: var(--accent);
   color: #f8fafc;
 }
 
@@ -233,7 +247,8 @@
 .accordion {
   border: 1px solid var(--border);
   border-radius: 12px;
-  background: #fff;
+  background: var(--surface);
+  overflow: hidden;
 }
 
 .accordion + .accordion {
@@ -247,19 +262,20 @@
   justify-content: space-between;
   gap: 8px;
   padding: 12px 16px;
-  background: #f8fafc;
+  background: var(--input-bg-muted);
   border: none;
-  border-radius: 12px;
   color: var(--text);
   cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
 .accordion-header:hover {
-  background: #edf2f7;
+  background: var(--surface-hover);
 }
 
 .accordion-content {
   padding: 16px;
+  background: var(--surface);
 }
 
 .callout {
@@ -305,15 +321,15 @@
 .table thead th {
   position: sticky;
   top: 0;
-  background: #f8fafc;
+  background: var(--input-bg-muted);
   color: var(--muted);
   font-weight: 600;
   z-index: 1;
 }
 
 .tooltip-card {
-  background: #fff;
-  border: 1px solid #e2e8f0;
+  background: var(--tooltip-bg);
+  border: 1px solid var(--border);
   border-radius: 12px;
   padding: 12px 14px;
   box-shadow: 0 20px 40px -24px rgba(15, 23, 42, 0.45);
@@ -445,23 +461,27 @@
 .category-breakdown {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
 .category-breakdown__totals {
-  font-size: 12px;
+  font-size: 11px;
+  color: var(--muted);
 }
 
 .category-grid {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
+  max-height: 240px;
+  overflow-y: auto;
+  padding-right: 4px;
 }
 
 .category-grid__row {
   display: grid;
-  grid-template-columns: 1.5fr 1fr 0.6fr auto;
-  gap: 8px;
+  grid-template-columns: 1.4fr 1fr 0.6fr auto;
+  gap: 6px;
   align-items: center;
 }
 
@@ -476,14 +496,77 @@
   justify-self: end;
 }
 
+.category-grid__row .input,
+.category-grid__row .select {
+  font-size: 14px;
+  padding: 8px 10px;
+}
+
 .category-grid__row .btn {
   justify-self: end;
+  padding: 6px 10px;
+  font-size: 12px;
 }
 
 .category-actions {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+.future-events {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.future-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 260px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.future-grid__row {
+  display: grid;
+  grid-template-columns: 1fr 1.1fr 0.8fr 0.6fr 0.8fr 0.6fr 0.6fr auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.future-grid__row--header {
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.future-grid__row--header span:last-child {
+  justify-self: end;
+}
+
+.future-grid__row .input,
+.future-grid__row .select {
+  font-size: 14px;
+  padding: 8px 10px;
+}
+
+.future-grid__muted {
+  color: var(--muted);
+  font-size: 13px;
+  text-align: center;
+}
+
+.future-grid__row .btn {
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
+.future-actions {
+  display: flex;
+  justify-content: flex-end;
 }
 
 @media (max-width: 640px) {
@@ -499,8 +582,16 @@
   .category-actions {
     flex-direction: column;
   }
+  .future-grid__row {
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  }
+  .future-grid__row--header {
+    display: none;
+  }
+  .future-grid__row .btn {
+    justify-self: start;
+  }
 }
-
 
 @media (max-width: 768px) {
   .container {

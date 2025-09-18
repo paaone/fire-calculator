@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
-import ProjectionChart, { SeriesPoint } from "./components/ProjectionChart"
+import ProjectionChart, { SeriesPoint, ChartMilestone } from "./components/ProjectionChart"
 import CashFlowTable, { CashFlowRow } from "./components/CashFlowTable"
 import Histogram from "./components/Histogram"
 import Inputs, { StrategyName } from "./components/Inputs"
@@ -33,6 +33,36 @@ import {
 } from "./lib/planning"
 
 const DEFAULT_MARKET: MarketCode = "us"
+
+const EXPENSE_EMOJI: Record<FutureExpensePlan["category"], string> = {
+  home_project: "🏠",
+  vehicle: "🚗",
+  education: "🎓",
+  healthcare: "🩺",
+  travel: "✈️",
+  wedding: "💍",
+  other: "⭐",
+}
+
+const EXPENSE_LABEL_FALLBACK: Record<FutureExpensePlan["category"], string> = {
+  home_project: "Home milestone",
+  vehicle: "Vehicle purchase",
+  education: "Education milestone",
+  healthcare: "Healthcare milestone",
+  travel: "Travel splurge",
+  wedding: "Celebration",
+  other: "Future expense",
+}
+
+function expenseEmoji(category: FutureExpensePlan["category"]): string {
+  return EXPENSE_EMOJI[category] ?? "⭐"
+}
+
+function expenseLabel(category: FutureExpensePlan["category"], label?: string): string {
+  const trimmed = label?.trim()
+  if (trimmed) return trimmed
+  return EXPENSE_LABEL_FALLBACK[category] ?? "Future expense"
+}
 
 type ViewMode = "landing" | "results"
 
@@ -352,6 +382,37 @@ export default function App() {
   }
 
   const baseYear = new Date().getFullYear()
+
+  const chartMilestones = useMemo<ChartMilestone[]>(() => {
+    const map = new Map<number, ChartMilestone>()
+
+    const addMilestone = (year: number, emoji: string, label: string, drawLine = false) => {
+      const trimmedLabel = label.trim()
+      const existing = map.get(year)
+      if (existing) {
+        existing.emoji = `${existing.emoji} ${emoji}`.trim()
+        existing.label = trimmedLabel ? (existing.label ? `${existing.label} | ${trimmedLabel}` : trimmedLabel) : existing.label
+        existing.drawLine = existing.drawLine || drawLine
+      } else {
+        map.set(year, { year, emoji, label: trimmedLabel, drawLine })
+      }
+    }
+
+    if (stillWorking && startDelayYears > 0) {
+      addMilestone(baseYear + startDelayYears, "🌴", "Retirement", true)
+    }
+
+    futureExpenses
+      .filter((expense) => Number.isFinite(expense.amount) && Math.abs(expense.amount) > 0.01)
+      .forEach((expense) => {
+        const year = baseYear + Math.max(0, Math.round(expense.startYear))
+        const emoji = expenseEmoji(expense.category)
+        const label = expenseLabel(expense.category, expense.label)
+        addMilestone(year, emoji, label, false)
+      })
+
+    return Array.from(map.values()).sort((a, b) => a.year - b.year)
+  }, [stillWorking, startDelayYears, futureExpenses, baseYear])
 
   const toSeries = useCallback(
     (res: any): SeriesPoint[] =>
@@ -734,9 +795,9 @@ export default function App() {
                   <strong>You're FI-ready based on history.</strong> Success rate is at least 80%. Explore the range below.
                 </div>
               </div>
-              <ProjectionChart data={toSeriesWithUnits(hist)} title={`Historical projection (${unitLabel})`} retireAtMonths={startDelayYears * 12} currencyCode={currencyCode} />
+              <ProjectionChart data={toSeriesWithUnits(hist)} title={`Historical projection (${unitLabel})`} currencyCode={currencyCode} milestones={chartMilestones} />
               <CashFlowTable rows={toCashFlowRows(hist)} title={`Detailed cashflow table (${unitLabel})`} currencyCode={currencyCode} />
-              <ProjectionChart data={toSeriesWithUnits(mc)} title={`Monte Carlo projection (${unitLabel})`} retireAtMonths={startDelayYears * 12} currencyCode={currencyCode} />
+              <ProjectionChart data={toSeriesWithUnits(mc)} title={`Monte Carlo projection (${unitLabel})`} currencyCode={currencyCode} milestones={chartMilestones} />
               <Histogram
                 values={valueUnits === "nominal" ? hist.ending_balances.map((v) => v * Math.pow(1 + inflationPct / 100, years)) : hist.ending_balances}
                 title={`Historical ending balances (${unitLabel})`}

@@ -433,67 +433,101 @@ export default function Inputs({
         title="Future spending events"
         hint="Model one-time goals (home purchase) or recurring costs (college, healthcare). Amounts are in today's dollars; we grow them by the category inflation."
       />
-      <div className="vstack" style={{ gap: 12 }}>
-        {futureExpenses.map((item, idx) => (
-          <div className="row" key={item.id}>
-            <div>
-              <FieldHeader label="Type" />
-              <select className="select" value={item.category} onChange={(e) => handleExpenseCategory(idx, e.target.value as FutureExpensePlan["category"]) }>
-                {FUTURE_EXPENSE_OPTIONS.map((option) => (
-                  <option key={option.key} value={option.key}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <FieldHeader label="Label" />
-              <input className="input" type="text" value={item.label} onChange={(e) => handleExpenseChange(idx, { label: e.target.value })} />
-            </div>
-            <div>
-              <FieldHeader label="Amount" />
-              <CurrencyInput value={item.amount} onChange={(value) => handleExpenseChange(idx, { amount: value })} currency={currencyCode} />
-            </div>
-            <div>
-              <FieldHeader label="Starts in year" help="0 = this year, 1 = next year." />
-              <input className="input" type="number" min={0} max={60} step={1} value={item.startYear} onChange={(e) => handleExpenseChange(idx, { startYear: Number(e.target.value) })} />
-            </div>
-            <div>
-              <FieldHeader label="Frequency" />
-              <select
-                className="select"
-                value={item.frequency}
-                onChange={(e) => handleExpenseChange(idx, { frequency: e.target.value as FutureExpensePlan["frequency"], years: e.target.value === "recurring" ? item.years || 5 : 1 })}
-              >
-                {frequencyOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            {item.frequency === "recurring" && (
-              <div>
-                <FieldHeader label="Years" />
-                <input className="input" type="number" min={1} max={40} step={1} value={item.years} onChange={(e) => handleExpenseChange(idx, { years: Number(e.target.value) })} />
-              </div>
-            )}
-            <div>
-              <FieldHeader label="Inflation %" />
-              <input className="input" type="number" min={0} max={10} step={0.1} value={item.inflation} onChange={(e) => handleExpenseChange(idx, { inflation: Number(e.target.value) })} />
-            </div>
-            <div className="vstack" style={{ justifyContent: "flex-end" }}>
-              <button className="btn btn-secondary btn-sm" type="button" onClick={() => handleRemoveExpense(idx)}>
-                Remove
-              </button>
-            </div>
+      <div className="future-events">
+        <div className="future-grid">
+          <div className="future-grid__row future-grid__row--header">
+            <span>Type</span>
+            <span>Label</span>
+            <span>Amount</span>
+            <span>Starts (yrs)</span>
+            <span>Frequency</span>
+            <span>Years</span>
+            <span>Inflation %</span>
+            <span />
           </div>
-        ))}
-        <button className="btn btn-secondary btn-sm" type="button" onClick={handleAddExpense}>
-          Add goal or milestone
-        </button>
+          {futureExpenses.map((item, idx) => {
+            const isRecurring = item.frequency === "recurring"
+            return (
+              <div className="future-grid__row" key={item.id}>
+                <select
+                  className="select"
+                  aria-label="Expense type"
+                  value={item.category}
+                  onChange={(e) => handleExpenseCategory(idx, e.target.value as FutureExpensePlan["category"])}
+                >
+                  {FUTURE_EXPENSE_OPTIONS.map((option) => (
+                    <option key={option.key} value={option.key}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  className="input"
+                  type="text"
+                  aria-label="Expense label"
+                  value={item.label}
+                  onChange={(e) => handleExpenseChange(idx, { label: e.target.value })}
+                />
+                <CurrencyInput value={item.amount} onChange={(value) => handleExpenseChange(idx, { amount: value })} currency={currencyCode} />
+                <input
+                  className="input"
+                  type="number"
+                  min={0}
+                  max={60}
+                  step={1}
+                  aria-label="Start year"
+                  value={item.startYear}
+                  onChange={(e) => handleExpenseChange(idx, { startYear: Number(e.target.value) })}
+                />
+                <select
+                  className="select"
+                  aria-label="Expense frequency"
+                  value={item.frequency}
+                  onChange={(e) => handleExpenseChange(idx, { frequency: e.target.value as FutureExpensePlan["frequency"], years: e.target.value === "recurring" ? item.years || 5 : 1 })}
+                >
+                  {frequencyOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                {isRecurring ? (
+                  <input
+                    className="input"
+                    type="number"
+                    min={1}
+                    max={40}
+                    step={1}
+                    aria-label="Number of years"
+                    value={item.years}
+                    onChange={(e) => handleExpenseChange(idx, { years: Number(e.target.value) })}
+                  />
+                ) : (
+                  <span className="future-grid__muted">-</span>
+                )}
+                <input
+                  className="input"
+                  type="number"
+                  min={0}
+                  max={10}
+                  step={0.1}
+                  aria-label="Expense inflation percent"
+                  value={item.inflation}
+                  onChange={(e) => handleExpenseChange(idx, { inflation: Number(e.target.value) })}
+                />
+                <button className="btn btn-secondary btn-sm" type="button" onClick={() => handleRemoveExpense(idx)}>
+                  Remove
+                </button>
+              </div>
+            )
+          })}
+        </div>
+        <div className="future-actions">
+          <button className="btn btn-secondary btn-sm" type="button" onClick={handleAddExpense}>
+            Add goal or milestone
+          </button>
+        </div>
       </div>
-
       <div className="divider" />
 
       <SectionHeader

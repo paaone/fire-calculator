@@ -1,47 +1,57 @@
 import { useEffect, useMemo, useState } from "react"
 
-function parseCurrency(input: string): number | null {
-  const digits = input.replace(/[^0-9]/g, "")
-  if (!digits) return 0
-  const n = Number(digits)
-  return Number.isNaN(n) ? null : n
+function sanitizeNumeric(input: string): string {
+  return input.replace(/[^0-9.]/g, "")
 }
 
 export default function CurrencyInput({ value, onChange, placeholder, currency = "USD" }: { value: number; onChange: (v: number) => void; placeholder?: string; currency?: string }) {
   const locale = currency === "INR" ? "en-IN" : undefined
   const formatter = useMemo(() => new Intl.NumberFormat(locale ?? undefined, { style: "currency", currency, maximumFractionDigits: 0 }), [currency, locale])
 
-  const formatCurrency = (n: number | null) => {
-    if (n === null || Number.isNaN(n)) return ""
-    return formatter.format(n)
-  }
-
-  const [text, setText] = useState<string>(formatCurrency(value ?? 0))
+  const [focused, setFocused] = useState(false)
+  const [text, setText] = useState(() => formatter.format(value ?? 0))
 
   useEffect(() => {
-    setText(formatCurrency(value ?? 0))
-  }, [value, formatter])
+    if (!focused) {
+      setText(formatter.format(value ?? 0))
+    }
+  }, [value, formatter, focused])
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const raw = e.target.value
-    const parsed = parseCurrency(raw)
-    if (parsed === null) return
-    onChange(parsed)
-    setText(formatCurrency(parsed))
+    setText(raw)
+    const cleaned = sanitizeNumeric(raw)
+    if (!cleaned) {
+      onChange(0)
+      return
+    }
+    const numeric = Number(cleaned)
+    if (!Number.isNaN(numeric)) {
+      onChange(numeric)
+    }
   }
 
   function handleFocus(e: React.FocusEvent<HTMLInputElement>) {
-    e.currentTarget.select()
+    setFocused(true)
+    const base = Number.isFinite(value) && value !== 0 ? String(value) : ""
+    setText(base)
+    requestAnimationFrame(() => e.currentTarget.select())
+  }
+
+  function handleBlur() {
+    setFocused(false)
+    setText(formatter.format(value ?? 0))
   }
 
   return (
     <input
       className="input"
       type="text"
-      inputMode="numeric"
+      inputMode="decimal"
       value={text}
       onChange={handleChange}
       onFocus={handleFocus}
+      onBlur={handleBlur}
       placeholder={placeholder}
     />
   )
