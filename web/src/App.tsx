@@ -98,6 +98,11 @@ export default function App() {
 
   const [hydratedFromURL, setHydratedFromURL] = useState(false)
   const [applyDefaultsPending, setApplyDefaultsPending] = useState(false)
+  const [activePreset, setActivePreset] = useState<'lean' | 'baseline' | 'fat' | null>('baseline')
+
+  const markCustom = useCallback(() => {
+    setActivePreset((prev) => (prev === null ? prev : null))
+  }, [])
 
   useEffect(() => {
     if (view === "results" && typeof window !== 'undefined') {
@@ -107,14 +112,111 @@ export default function App() {
 
   const handleSpendChange = useCallback((value: number) => {
     const safe = Number.isFinite(value) ? Math.max(0, value) : 0
+    if (safe === spend) return
+    markCustom()
     setSpend(safe)
     setSpendingCategories((prev) => scaleSpendingCategories(prev, safe))
-  }, [])
+  }, [spend, markCustom])
 
   const handleSpendingCategoriesChange = useCallback((rows: SpendingCategoryPlan[]) => {
+    markCustom()
     setSpendingCategories(rows)
     setSpend(totalSpendingFromCategories(rows))
-  }, [])
+  }, [markCustom])
+
+  const handleInitialChange = useCallback((value: number) => {
+    if (value === initial) return
+    markCustom()
+    setInitial(value)
+  }, [initial, markCustom])
+
+  const handleYearsChange = useCallback((value: number) => {
+    if (value === years) return
+    markCustom()
+    setYears(value)
+  }, [years, markCustom])
+
+  const handleStrategyChange = useCallback((next: StrategyName) => {
+    if (next === strategyName) return
+    markCustom()
+    setStrategyName(next)
+  }, [strategyName, markCustom])
+
+  const handleVpwChange = useCallback((value: number) => {
+    if (value === vpwPct) return
+    markCustom()
+    setVpwPct(value)
+  }, [vpwPct, markCustom])
+
+  const handleGuardBandChange = useCallback((value: number) => {
+    if (value === guardBand) return
+    markCustom()
+    setGuardBand(value)
+  }, [guardBand, markCustom])
+
+  const handleGuardStepChange = useCallback((value: number) => {
+    if (value === guardStep) return
+    markCustom()
+    setGuardStep(value)
+  }, [guardStep, markCustom])
+
+  const handleStartDelayChange = useCallback((value: number) => {
+    if (value === startDelayYears) return
+    markCustom()
+    setStartDelayYears(value)
+  }, [startDelayYears, markCustom])
+
+  const handleAnnualContribChange = useCallback((value: number) => {
+    if (value === annualContrib) return
+    markCustom()
+    setAnnualContrib(value)
+  }, [annualContrib, markCustom])
+
+  const handleIncomeAmountChange = useCallback((value: number) => {
+    if (value === incomeAmount) return
+    markCustom()
+    setIncomeAmount(value)
+  }, [incomeAmount, markCustom])
+
+  const handleIncomeStartYearChange = useCallback((value: number) => {
+    if (value === incomeStartYear) return
+    markCustom()
+    setIncomeStartYear(value)
+  }, [incomeStartYear, markCustom])
+
+  const handleStillWorkingChange = useCallback((value: boolean) => {
+    if (value === stillWorking) return
+    markCustom()
+    setStillWorking(value)
+  }, [stillWorking, markCustom])
+
+  const handleExpectedRealReturnChange = useCallback((value: number) => {
+    if (value === expectedRealReturn) return
+    markCustom()
+    setExpectedRealReturn(value)
+  }, [expectedRealReturn, markCustom])
+
+  const handleCurrentAgeChange = useCallback((value: number) => {
+    if (value === currentAge) return
+    markCustom()
+    setCurrentAge(value)
+  }, [currentAge, markCustom])
+
+  const handleInflationChange = useCallback((value: number) => {
+    if (value === inflationPct) return
+    markCustom()
+    setInflationPct(value)
+  }, [inflationPct, markCustom])
+
+  const handleFutureExpensesChange = useCallback((rows: FutureExpensePlan[]) => {
+    markCustom()
+    setFutureExpenses(rows)
+  }, [markCustom])
+
+  const handleFutureIncomesChange = useCallback((rows: FutureIncomePlan[]) => {
+    markCustom()
+    setFutureIncomes(rows)
+  }, [markCustom])
 
 
   const marketsQuery = useQuery<MarketCatalog>({
@@ -421,6 +523,8 @@ export default function App() {
   }, [applyDefaultsPending, marketMeta, applyDefaultsFromMeta])
 
   const handleMarketChange = (next: MarketCode) => {
+    if (next === market) return
+    markCustom()
     setMarket(next)
     setApplyDefaultsPending(true)
     setView((prev) => (prev === "results" ? prev : "landing"))
@@ -517,49 +621,53 @@ export default function App() {
     const gBand = guardBand / 100
     const gStep = guardStep / 100
     const initialWR = initialTotal > 0 ? spend / initialTotal : 0
+    const inflationRate = 1 + inflationPct / 100
     let guardSpend = spend
 
     for (let y = 0; y < yearsCount; y++) {
       const prevIdx = y * 12 - 1
-      const startMedian = y === 0 ? initialTotal : Number(res.quantiles.p50[prevIdx] ?? 0)
-      const startP10 = y === 0 ? initialTotal : Number(res.quantiles.p10[prevIdx] ?? 0)
-      let basic = 0
+      const startMedianReal = y === 0 ? initialTotal : Number(res.quantiles.p50[prevIdx] ?? 0)
+      const startP10Real = y === 0 ? initialTotal : Number(res.quantiles.p10[prevIdx] ?? 0)
+      const unitFactor = valueUnits === "nominal" ? Math.pow(inflationRate, y) : 1
+      let baseBasic = 0
 
-      if (y < startDelayYears) {
-        basic = Math.max(annualContrib, 0)
+      if (stillWorking && y < startDelayYears) {
+        baseBasic = Math.max(annualContrib, 0)
+      } else if (strategyName === "variable_percentage") {
+        baseBasic = Math.max(0, startMedianReal * vpct)
+      } else if (strategyName === "guardrails") {
+        const wr = startMedianReal > 0 ? guardSpend / startMedianReal : 0
+        const low = initialWR * (1 - gBand)
+        const high = initialWR * (1 + gBand)
+        if (wr < low) guardSpend = Math.min(guardSpend * (1 + gStep), guardSpend + guardSpend * gStep)
+        if (wr > high) guardSpend = Math.max(guardSpend * (1 - gStep), guardSpend - guardSpend * gStep)
+        baseBasic = guardSpend
       } else {
-        if (strategyName === "variable_percentage") {
-          basic = Math.max(0, startMedian * vpct)
-        } else if (strategyName === "guardrails") {
-          const wr = startMedian > 0 ? guardSpend / startMedian : 0
-          const low = initialWR * (1 - gBand)
-          const high = initialWR * (1 + gBand)
-          if (wr < low) guardSpend = Math.min(guardSpend * (1 + gStep), guardSpend + guardSpend * gStep)
-          if (wr > high) guardSpend = Math.max(guardSpend * (1 - gStep), guardSpend - guardSpend * gStep)
-          basic = guardSpend
-        } else {
-          basic = spend
-        }
+        baseBasic = spend
       }
 
       const expenseBucket = expenseSchedule.get(y) ?? { nominal: 0, real: 0 }
       const otherSpending = valueUnits === "nominal" ? expenseBucket.nominal : expenseBucket.real
       const incomeBucket = incomeSchedule.get(y) ?? { nominal: 0, real: 0 }
       const otherIncome = valueUnits === "nominal" ? incomeBucket.nominal : incomeBucket.real
-      const recurringIncome = y >= incomeStartYear ? incomeAmount : 0
+      const recurringIncomeReal = y >= incomeStartYear ? incomeAmount : 0
+      const recurringIncome = valueUnits === "nominal" ? recurringIncomeReal * unitFactor : recurringIncomeReal
+      const basic = baseBasic * unitFactor
       const netIncome = recurringIncome + otherIncome
       const cashFlow = basic + otherSpending - netIncome
       const age = currentAge > 0 ? currentAge + y : undefined
+      const isSavingsYear = stillWorking && y < startDelayYears
 
       rows.push({
         year: baseYear + y,
         age,
-        startMedian,
-        startP10,
+        startMedian: startMedianReal * unitFactor,
+        startP10: startP10Real * unitFactor,
         basic,
         otherSpending,
         otherIncome: netIncome,
         cashFlow,
+        isSavingsYear,
       })
     }
 
@@ -616,6 +724,7 @@ export default function App() {
       setFutureExpenses([])
       setValueUnits("real")
     }
+    setActivePreset(name)
   }, [])
 
   const fireTarget = fireTargetFromSpend(spend, 0.04)
@@ -703,44 +812,45 @@ export default function App() {
         onMarketChange={handleMarketChange}
         currencyCode={currencyCode}
         initial={initial}
-        onInitial={setInitial}
+        onInitial={handleInitialChange}
         spend={spend}
         onSpend={handleSpendChange}
         years={years}
-        onYears={setYears}
+        onYears={handleYearsChange}
         strategy={strategyName}
-        onStrategy={setStrategyName}
+        onStrategy={handleStrategyChange}
         vpwPct={vpwPct}
-        onVpwPct={setVpwPct}
+        onVpwPct={handleVpwChange}
         guardBand={guardBand}
-        onGuardBand={setGuardBand}
+        onGuardBand={handleGuardBandChange}
         guardStep={guardStep}
-        onGuardStep={setGuardStep}
+        onGuardStep={handleGuardStepChange}
         startDelayYears={startDelayYears}
-        onStartDelay={setStartDelayYears}
+        onStartDelay={handleStartDelayChange}
         annualContrib={annualContrib}
-        onAnnualContrib={setAnnualContrib}
+        onAnnualContrib={handleAnnualContribChange}
         incomeAmount={incomeAmount}
-        onIncomeAmount={setIncomeAmount}
+        onIncomeAmount={handleIncomeAmountChange}
         incomeStartYear={incomeStartYear}
-        onIncomeStartYear={setIncomeStartYear}
+        onIncomeStartYear={handleIncomeStartYearChange}
         stillWorking={stillWorking}
-        onStillWorking={setStillWorking}
+        onStillWorking={handleStillWorkingChange}
         expectedRealReturn={expectedRealReturn}
-        onExpectedRealReturn={setExpectedRealReturn}
+        onExpectedRealReturn={handleExpectedRealReturnChange}
         currentAge={currentAge}
-        onCurrentAge={setCurrentAge}
+        onCurrentAge={handleCurrentAgeChange}
         inflationPct={inflationPct}
-        onInflationPct={setInflationPct}
+        onInflationPct={handleInflationChange}
         spendingCategories={spendingCategories}
         onSpendingCategoriesChange={handleSpendingCategoriesChange}
         futureExpenses={futureExpenses}
-        onFutureExpensesChange={setFutureExpenses}
+        onFutureExpensesChange={handleFutureExpensesChange}
         futureIncomes={futureIncomes}
-        onFutureIncomesChange={setFutureIncomes}
+        onFutureIncomesChange={handleFutureIncomesChange}
         onSimulate={() => setView("results")}
         running={loading}
         onApplyPreset={applyPreset}
+        selectedPreset={activePreset}
       />
     )
   }
@@ -756,41 +866,41 @@ export default function App() {
             onMarketChange={handleMarketChange}
             currencyCode={currencyCode}
             initial={initial}
-            onInitial={setInitial}
+            onInitial={handleInitialChange}
             spend={spend}
             onSpend={handleSpendChange}
             years={years}
-            onYears={setYears}
+            onYears={handleYearsChange}
             strategy={strategyName}
-            onStrategy={setStrategyName}
+            onStrategy={handleStrategyChange}
             vpwPct={vpwPct}
-            onVpwPct={setVpwPct}
+            onVpwPct={handleVpwChange}
             guardBand={guardBand}
-            onGuardBand={setGuardBand}
+            onGuardBand={handleGuardBandChange}
             guardStep={guardStep}
-            onGuardStep={setGuardStep}
+            onGuardStep={handleGuardStepChange}
             startDelayYears={startDelayYears}
-            onStartDelay={setStartDelayYears}
+            onStartDelay={handleStartDelayChange}
             annualContrib={annualContrib}
-            onAnnualContrib={setAnnualContrib}
+            onAnnualContrib={handleAnnualContribChange}
             incomeAmount={incomeAmount}
-            onIncomeAmount={setIncomeAmount}
+            onIncomeAmount={handleIncomeAmountChange}
             incomeStartYear={incomeStartYear}
-            onIncomeStartYear={setIncomeStartYear}
+            onIncomeStartYear={handleIncomeStartYearChange}
             stillWorking={stillWorking}
-            onStillWorking={setStillWorking}
+            onStillWorking={handleStillWorkingChange}
             expectedRealReturn={expectedRealReturn}
-            onExpectedRealReturn={setExpectedRealReturn}
+            onExpectedRealReturn={handleExpectedRealReturnChange}
             currentAge={currentAge}
-            onCurrentAge={setCurrentAge}
+            onCurrentAge={handleCurrentAgeChange}
             inflationPct={inflationPct}
-            onInflationPct={setInflationPct}
+            onInflationPct={handleInflationChange}
             spendingCategories={spendingCategories}
             onSpendingCategoriesChange={handleSpendingCategoriesChange}
             futureExpenses={futureExpenses}
-            onFutureExpensesChange={setFutureExpenses}
+            onFutureExpensesChange={handleFutureExpensesChange}
             futureIncomes={futureIncomes}
-            onFutureIncomesChange={setFutureIncomes}
+            onFutureIncomesChange={handleFutureIncomesChange}
             onRun={() => {
               histQuery.refetch()
               mcQuery.refetch()
@@ -798,6 +908,7 @@ export default function App() {
             running={loading}
             onShare={copyShareLink}
             onApplyPreset={applyPreset}
+            selectedPreset={activePreset}
           />
         </aside>
         <main>

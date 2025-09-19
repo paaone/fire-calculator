@@ -50,14 +50,14 @@ type LandingProps = {
   onFutureExpensesChange: (rows: FutureExpensePlan[]) => void
   futureIncomes: FutureIncomePlan[]
   onFutureIncomesChange: (rows: FutureIncomePlan[]) => void
+  selectedPreset: "lean" | "baseline" | "fat" | null
 }
 
 export default function Landing(p: LandingProps) {
   return (
     <div className="landing">
       <section className="landing__hero">
-        <span className="landing__tag">Now covering US and India markets</span>
-        <h1>Plan your FIRE journey with realistic market data</h1>
+        <h1>Plan your FIRE journey</h1>
         <p>
           Stress-test your spending plan against every historical market path and a modern Monte Carlo simulation. Toggle markets,
           adjust assumptions, and get a feel for your odds before you pull the trigger.
@@ -110,6 +110,7 @@ export default function Landing(p: LandingProps) {
           onRun={p.onSimulate}
           running={p.running}
           onApplyPreset={p.onApplyPreset}
+          selectedPreset={p.selectedPreset}
         />
       </section>
     </div>

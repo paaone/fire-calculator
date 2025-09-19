@@ -113,6 +113,7 @@ type Props = {
   running: boolean
   variant?: "landing" | "results"
   onShare?: () => void
+  selectedPreset?: "lean" | "baseline" | "fat" | null
 }
 
 function FieldHeader({ label, help }: { label: string; help?: string }) {
@@ -190,6 +191,7 @@ export default function Inputs({
   onRun,
   running,
   onShare,
+  selectedPreset = null,
 }: Props) {
   const categoryLabelOptions = useMemo(
     () =>
@@ -399,33 +401,63 @@ export default function Inputs({
           <h3 className="title">Your Plan</h3>
           <p className="subtitle">Outline your profile, goals, and assumptions. We'll translate everything into real-dollar cash flows.</p>
         </div>
+      </div>
+
+      <div className="plan-card__toolbar">
         {onApplyPreset && (
           <div className="preset-row">
             <span className="label">Quick presets</span>
-            <div className="segmented">
-              <button type="button" onClick={() => onApplyPreset("lean")}>Lean</button>
-              <button type="button" onClick={() => onApplyPreset("baseline")}>Baseline</button>
-              <button type="button" onClick={() => onApplyPreset("fat")}>Fat FIRE</button>
+            <div className="segmented segmented-lg">
+              <button
+                type="button"
+                className={clsx({ active: selectedPreset === "lean" })}
+                onClick={() => onApplyPreset("lean")}
+                aria-pressed={selectedPreset === "lean"}
+              >
+                Lean
+              </button>
+              <button
+                type="button"
+                className={clsx({ active: selectedPreset === "baseline" })}
+                onClick={() => onApplyPreset("baseline")}
+                aria-pressed={selectedPreset === "baseline"}
+              >
+                Baseline
+              </button>
+              <button
+                type="button"
+                className={clsx({ active: selectedPreset === "fat" })}
+                onClick={() => onApplyPreset("fat")}
+                aria-pressed={selectedPreset === "fat"}
+              >
+                Fat FIRE
+              </button>
             </div>
           </div>
         )}
-      </div>
-
-      <div className="plan-card__market">
-        <span className="label">Market data set</span>
-        <div className="segmented segmented-lg">
-          {markets.map((option) => (
-            <button key={option.key} type="button" className={market === option.key ? "active" : ""} onClick={() => onMarketChange(option.key)}>
-              {option.label}
-            </button>
-          ))}
+        <div className="plan-card__market">
+          <span className="label">Market data set</span>
+          <div className="segmented segmented-lg">
+            {markets.map((option) => (
+              <button
+                key={option.key}
+                type="button"
+                className={clsx({ active: market === option.key })}
+                onClick={() => onMarketChange(option.key)}
+                aria-pressed={market === option.key}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
+
 
       <div className="divider" />
 
       {renderRunActions('top')}
-      <SectionHeader title="Household snapshot" hint="Capture your age, retirement horizon, and how long the plan should last." />
+      <SectionHeader title="Retirement overview" hint="Set your current age and how long you want this plan to last." />
       <div className="row">
         <div>
           <FieldHeader label="Current age" />
@@ -438,13 +470,6 @@ export default function Inputs({
             value={currentAge}
             onChange={(value) => onCurrentAge?.(value)}
           />
-        </div>
-        <div>
-          <FieldHeader label="Working status" help="Helps determine whether we assume ongoing savings before retirement." />
-          <select className="select" value={stillWorking ? "yes" : "no"} onChange={(e) => onStillWorking(e.target.value === "yes")}>
-            <option value="yes">Still working</option>
-            <option value="no">Already retired</option>
-          </select>
         </div>
         <div>
           <FieldHeader label="Years to fund" help="How many retirement years you'd like to cover." />
@@ -460,7 +485,10 @@ export default function Inputs({
         </div>
       </div>
 
-      <div className="row">
+      <div className="divider" />
+
+      <SectionHeader title="Income streams" hint="Document guaranteed income so the simulator knows when to offset withdrawals." />
+      <div className="row income-streams__row">
         <div>
           <FieldHeader label="Years until retirement" help="Zero means you're retired now." />
           <NumberInput
@@ -471,12 +499,42 @@ export default function Inputs({
             decimal={false}
             value={startDelayYears}
             onChange={(value) => onStartDelay(value)}
+            disabled={!stillWorking}
           />
         </div>
         <div>
           <FieldHeader label="Annual savings until retirement" />
-          <CurrencyInput value={annualContrib} onChange={onAnnualContrib} currency={currencyCode} />
+          <CurrencyInput
+            value={annualContrib}
+            onChange={onAnnualContrib}
+            currency={currencyCode}
+            disabled={!stillWorking}
+          />
         </div>
+        <div className="income-streams__status">
+          <FieldHeader label="Working status" />
+          <div className="segmented segmented-sm">
+            <button
+              type="button"
+              className={clsx({ active: stillWorking })}
+              onClick={() => onStillWorking(true)}
+              aria-pressed={stillWorking}
+            >
+              Still working
+            </button>
+            <button
+              type="button"
+              className={clsx({ active: !stillWorking })}
+              onClick={() => onStillWorking(false)}
+              aria-pressed={!stillWorking}
+            >
+              Retired
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="row">
         <div>
           <FieldHeader label="Expected real return while working" help="Real (after inflation) annual growth assumption before retirement." />
           <NumberInput
@@ -488,10 +546,122 @@ export default function Inputs({
             onChange={(value) => onExpectedRealReturn(value)}
           />
         </div>
+        <div>
+          <FieldHeader label="Recurring income" help="Guaranteed pension, Social Security, or part-time Barista FIRE income that offsets withdrawals." />
+          <CurrencyInput value={incomeAmount} onChange={onIncomeAmount} currency={currencyCode} />
+        </div>
+        <div>
+          <FieldHeader label="Starts in retirement year" help="Year offset from today (0 = immediately)." />
+          <NumberInput
+            className="input"
+            min={0}
+            max={60}
+            step={1}
+            decimal={false}
+            value={incomeStartYear}
+            onChange={(value) => onIncomeStartYear(value)}
+          />
+        </div>
       </div>
 
-      <div className="divider" />
+      <div className="help help-inline">
+        Barista FIRE pairs part-time income with early retirement. Estimate the income amount and duration so the simulator can trim portfolio withdrawals during those years.
+      </div>
 
+      <Accordion title="Additional income sources">
+        <div className="income-grid">
+          <div className="income-grid__row income-grid__row--header">
+            <span>Label / Type</span>
+            <span>Amount</span>
+            <span>Starts (yrs)</span>
+            <span>Frequency</span>
+            <span>Years</span>
+            <span>Inflation %</span>
+            <span />
+          </div>
+          {futureIncomes.map((item, idx) => {
+            const isRecurring = item.frequency === "recurring"
+            return (
+              <div className="income-grid__row" key={item.id}>
+                <input
+                  className="input"
+                  type="text"
+                  list={FUTURE_INCOME_DATALIST_ID}
+                  aria-label="Income label"
+                  value={item.label}
+                  onChange={(e) => handleIncomeLabelChange(idx, e.target.value)}
+                />
+                <CurrencyInput value={item.amount} onChange={(value) => handleIncomeChange(idx, { amount: value })} currency={currencyCode} />
+                <NumberInput
+                  className="input"
+                  min={0}
+                  max={60}
+                  step={1}
+                  decimal={false}
+                  aria-label="Start year"
+                  value={item.startYear}
+                  onChange={(value) => handleIncomeChange(idx, { startYear: value })}
+                />
+                <select
+                  className="select"
+                  aria-label="Income frequency"
+                  value={item.frequency}
+                  onChange={(e) => handleIncomeChange(idx, { frequency: e.target.value as FutureIncomePlan['frequency'], years: e.target.value === 'recurring' ? item.years || 30 : 1 })}
+                >
+                  {frequencyOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                {isRecurring ? (
+                  <NumberInput
+                    className="input"
+                    min={1}
+                    max={40}
+                    step={1}
+                    decimal={false}
+                    aria-label="Number of years"
+                    value={item.years}
+                    onChange={(value) => handleIncomeChange(idx, { years: value })}
+                  />
+                ) : (
+                  <span className="income-grid__muted">-</span>
+                )}
+                <NumberInput
+                  className="input"
+                  min={0}
+                  max={10}
+                  step={0.1}
+                  aria-label="Income inflation percent"
+                  value={item.inflation}
+                  onChange={(value) => handleIncomeChange(idx, { inflation: value })}
+                />
+                <button
+                  className="btn-icon btn-icon-danger"
+                  type="button"
+                  aria-label="Remove income"
+                  onClick={() => handleRemoveIncome(idx)}
+                >
+                  <FaCircleMinus aria-hidden="true" />
+                </button>
+              </div>
+            )
+          })}
+        </div>
+        <div className="income-actions">
+          <button className="btn btn-secondary btn-sm" type="button" onClick={handleAddIncome}>
+            Add income stream
+          </button>
+        </div>
+        <datalist id={FUTURE_INCOME_DATALIST_ID}>
+          {incomeLabelOptions.map((option) => (
+            <option key={option} value={option} />
+          ))}
+        </datalist>
+      </Accordion>
+
+      <div className="divider" />
       <SectionHeader title="Portfolio today" hint="What you've already saved. Adjust inflation if you need a custom nominal projection." />
       <FieldHeader label="Current invested portfolio" help="Starting balance in today's currency." />
       <CurrencyInput value={initial} onChange={onInitial} currency={currencyCode} />
@@ -682,114 +852,6 @@ export default function Inputs({
         </datalist>
       </div>
       <div className="divider" />
-
-      <SectionHeader
-        title="Income streams"
-        hint="Document guaranteed income so the simulator knows when to offset withdrawals."
-      />
-      <div className="row">
-        <div>
-          <FieldHeader label="Recurring income" help="Pension or Social Security that repeats indefinitely." />
-          <CurrencyInput value={incomeAmount} onChange={onIncomeAmount} currency={currencyCode} />
-        </div>
-        <div>
-          <FieldHeader label="Starts in retirement year" help="Year offset from today (0 = immediately)." />
-          <NumberInput className="input" min={0} max={60} step={1} decimal={false} value={incomeStartYear} onChange={(value) => onIncomeStartYear(value)} />
-        </div>
-      </div>
-
-      <Accordion title="Additional income sources">
-        <div className="income-grid">
-          <div className="income-grid__row income-grid__row--header">
-            <span>Label / Type</span>
-            <span>Amount</span>
-            <span>Starts (yrs)</span>
-            <span>Frequency</span>
-            <span>Years</span>
-            <span>Inflation %</span>
-            <span />
-          </div>
-          {futureIncomes.map((item, idx) => {
-            const isRecurring = item.frequency === "recurring"
-            return (
-              <div className="income-grid__row" key={item.id}>
-                <input
-                  className="input"
-                  type="text"
-                  list={FUTURE_INCOME_DATALIST_ID}
-                  aria-label="Income label"
-                  value={item.label}
-                  onChange={(e) => handleIncomeLabelChange(idx, e.target.value)}
-                />
-                <CurrencyInput value={item.amount} onChange={(value) => handleIncomeChange(idx, { amount: value })} currency={currencyCode} />
-                <NumberInput
-                  className="input"
-                  min={0}
-                  max={60}
-                  step={1}
-                  decimal={false}
-                  aria-label="Income start year"
-                  value={item.startYear}
-                  onChange={(value) => handleIncomeChange(idx, { startYear: value })}
-                />
-                <select
-                  className="select"
-                  aria-label="Income frequency"
-                  value={item.frequency}
-                  onChange={(e) => handleIncomeChange(idx, { frequency: e.target.value as FutureIncomePlan["frequency"], years: e.target.value === "recurring" ? item.years || 30 : 1 })}
-                >
-                  {frequencyOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-                {isRecurring ? (
-                  <NumberInput
-                    className="input"
-                    min={1}
-                    max={60}
-                    step={1}
-                    decimal={false}
-                    aria-label="Income duration"
-                    value={item.years}
-                    onChange={(value) => handleIncomeChange(idx, { years: value })}
-                  />
-                ) : (
-                  <span className="income-grid__muted">-</span>
-                )}
-                <NumberInput
-                  className="input"
-                  min={0}
-                  max={10}
-                  step={0.1}
-                  aria-label="Income inflation percent"
-                  value={item.inflation}
-                  onChange={(value) => handleIncomeChange(idx, { inflation: value })}
-                />
-                <button
-                  className="btn-icon btn-icon-danger"
-                  type="button"
-                  aria-label="Remove income"
-                  onClick={() => handleRemoveIncome(idx)}
-                >
-                  <FaCircleMinus aria-hidden="true" />
-                </button>
-              </div>
-            )
-          })}
-        </div>
-        <div className="income-actions">
-          <button className="btn btn-secondary btn-sm" type="button" onClick={handleAddIncome}>
-            Add income stream
-          </button>
-        </div>
-        <datalist id={FUTURE_INCOME_DATALIST_ID}>
-          {incomeLabelOptions.map((option) => (
-            <option key={option} value={option} />
-          ))}
-        </datalist>
-      </Accordion>
 
       <div className="divider" />
 

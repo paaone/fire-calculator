@@ -9,6 +9,7 @@ export interface CashFlowRow {
   otherSpending: number
   otherIncome: number
   cashFlow: number
+  isSavingsYear: boolean
 }
 
 export default function CashFlowTable({ rows, title, currencyCode = "USD" }: { rows: CashFlowRow[]; title?: string; currencyCode?: string }) {
@@ -42,7 +43,7 @@ export default function CashFlowTable({ rows, title, currencyCode = "USD" }: { r
           <tbody>
             {rows.map((r) => {
               const yearAge = r.age ? `${r.year} (${r.age})` : String(r.year)
-              const basicClass = r.basic < 0 ? "table-cell-saving" : "table-cell-spend"
+              const basicClass = r.isSavingsYear ? "table-cell-saving" : "table-cell-spend"
               return (
                 <tr key={r.year}>
                   <td>{yearAge}</td>
