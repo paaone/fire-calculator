@@ -66,6 +66,7 @@ export default function Landing(p: LandingProps) {
 
       <section className="landing__panel">
         <Inputs
+          variant="landing"
           market={p.market}
           markets={p.markets}
           onMarketChange={p.onMarketChange}

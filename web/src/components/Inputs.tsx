@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect } from "react"
+import clsx from "clsx"
 import Accordion from "./Accordion"
 import CurrencyInput from "./CurrencyInput"
 import NumberInput from "./NumberInput"
@@ -110,13 +111,21 @@ type Props = {
   onFutureIncomesChange: (rows: FutureIncomePlan[]) => void
   onRun: () => void
   running: boolean
+  variant?: "landing" | "results"
+  onShare?: () => void
 }
 
 function FieldHeader({ label, help }: { label: string; help?: string }) {
   return (
     <div className="field-header">
-      <span className="label">{label}</span>
-      {help && <span className="label-help">{help}</span>}
+      <div className="field-header__row">
+        <span className="label">{label}</span>
+        {help && (
+          <span className="field-header__info" title={help} aria-label={help}>
+            <FaCircleInfo aria-hidden="true" />
+          </span>
+        )}
+      </div>
     </div>
   )
 }
@@ -136,6 +145,7 @@ const frequencyOptions = [
 ]
 
 export default function Inputs({
+  variant = "landing",
   market,
   markets,
   onMarketChange,
@@ -179,6 +189,7 @@ export default function Inputs({
   onFutureIncomesChange,
   onRun,
   running,
+  onShare,
 }: Props) {
   const categoryLabelOptions = useMemo(
     () =>
@@ -196,10 +207,42 @@ export default function Inputs({
   const incomeLabelOptions = useMemo(() => FUTURE_INCOME_OPTIONS.map((option) => option.label), [])
   const totalBreakdown = totalSpendingFromCategories(spendingCategories)
   const breakdownMatchesSpend = Math.abs(totalBreakdown - spend) < 0.5
+  const isResultsView = variant === "results"
+  const runButtonLabel = running ? "Running..." : "Run simulation"
+
+  const renderRunActions = (position: "top" | "bottom") => {
+    const isTop = position == "top"
+    if (isTop && !isResultsView) return null
+
+    return (
+      <div className={clsx("run-actions", `run-actions--${position}`, { 'run-actions--results': isResultsView })}>
+        <button
+          type="button"
+          className={clsx("btn", isTop ? "btn-primary" : "btn-primary btn-lg")}
+          onClick={onRun}
+          disabled={running}
+        >
+          {runButtonLabel}
+        </button>
+        {onShare && (
+          <button
+            type="button"
+            className={clsx("btn", isTop ? "btn-secondary" : "btn-secondary btn-lg")}
+            onClick={onShare}
+            disabled={running}
+          >
+            Save & share
+          </button>
+        )}
+      </div>
+    )
+  }
+
+  const showStrategyInline = !isResultsView
   const [showStrategyInfo, setShowStrategyInfo] = useState(false)
 
   useEffect(() => {
-    if (!showStrategyInfo) return
+    if (!isResultsView || !showStrategyInfo) return
     const handleKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         setShowStrategyInfo(false)
@@ -207,8 +250,13 @@ export default function Inputs({
     }
     window.addEventListener("keydown", handleKey)
     return () => window.removeEventListener("keydown", handleKey)
-  }, [showStrategyInfo])
+  }, [showStrategyInfo, isResultsView])
 
+  useEffect(() => {
+    if (!isResultsView && showStrategyInfo) {
+      setShowStrategyInfo(false)
+    }
+  }, [isResultsView, showStrategyInfo])
 
   const handleCategoryChange = (index: number, update: Partial<SpendingCategoryPlan>) => {
     const current = spendingCategories[index]
@@ -376,6 +424,7 @@ export default function Inputs({
 
       <div className="divider" />
 
+      {renderRunActions('top')}
       <SectionHeader title="Household snapshot" hint="Capture your age, retirement horizon, and how long the plan should last." />
       <div className="row">
         <div>
@@ -758,49 +807,47 @@ export default function Inputs({
             Guardrails
           </button>
         </div>
-        <div className="withdrawal-info">
-          <button
-            type="button"
-            className="info-trigger"
-            onClick={() => setShowStrategyInfo(true)}
-            aria-haspopup="dialog"
-            aria-expanded={showStrategyInfo}
-            aria-controls="withdrawal-info-dialog"
-          >
-            <FaCircleInfo aria-hidden="true" />
-            <span>Explain the strategies</span>
-          </button>
-        </div>
-        {showStrategyInfo && (
-          <div
-            className="modal-overlay"
-            role="dialog"
-            aria-modal="true"
-            id="withdrawal-info-dialog"
-            onClick={() => setShowStrategyInfo(false)}
-          >
-            <div className="modal-card" onClick={(event) => event.stopPropagation()}>
-              <div className="modal-card__header">
-                <h4>Withdrawal strategies</h4>
-                <button
-                  type="button"
-                  className="btn-icon"
-                  onClick={() => setShowStrategyInfo(false)}
-                  aria-label="Close strategy explanations"
-                >
-                  <FaXmark aria-hidden="true" />
-                </button>
-              </div>
-              <div className="modal-card__body">
-                <p><strong>Fixed:</strong> Keeps withdrawals level in today's dollars. Example: on a $1,000,000 nest egg with a 4% target you withdraw $40,000 this year and adjust that amount only for inflation.</p>
-                <p><strong>Variable %:</strong> Draws a set percentage of whatever the portfolio is worth each year. If you withdraw 4% from $1,000,000 ($40,000) and markets drop to $800,000, next year's withdrawal becomes $32,000.</p>
-                <p><strong>Guardrails:</strong> Starts at your target withdrawal but increases or decreases it when the withdrawal rate drifts outside your guard band. For example, with a 4% goal and a +/-20% band you would raise spending if markets surge and trim it if the portfolio shrinks too far.</p>
-              </div>
-            </div>
-          </div>
-        )}\r
-      </div>
 
+        {showStrategyInline ? (
+          <div className="withdrawal-explainer">
+            <p><strong>Fixed:</strong> Keeps withdrawals level in today's dollars. Example: on a $1,000,000 nest egg with a 4% target you withdraw $40,000 this year and adjust that amount only for inflation.</p>
+            <p><strong>Variable %:</strong> Draws a set percentage of whatever the portfolio is worth each year. If you withdraw 4% from $1,000,000 ($40,000) and markets drop to $800,000, next year's withdrawal becomes $32,000.</p>
+            <p><strong>Guardrails:</strong> Starts at your target withdrawal but increases or decreases it when the withdrawal rate drifts outside your guard band. For example, with a 4% goal and a +/-20% band you would raise spending if markets surge and trim it if the portfolio shrinks too far.</p>
+          </div>
+        ) : (
+          <div className="withdrawal-info">
+            <button
+              type="button"
+              className="info-trigger"
+              onClick={() => setShowStrategyInfo((prev) => !prev)}
+              aria-expanded={showStrategyInfo}
+              aria-controls="withdrawal-info-dialog"
+            >
+              <FaCircleInfo aria-hidden="true" />
+              <span>Explain the strategies</span>
+            </button>
+            {showStrategyInfo && (
+              <div className="info-popover" role="dialog" id="withdrawal-info-dialog" aria-label="Withdrawal strategies">
+                <div className="info-popover__header">
+                  <h4>Withdrawal strategies</h4>
+                  <button
+                    type="button"
+                    className="btn-icon"
+                    onClick={() => setShowStrategyInfo(false)}
+                    aria-label="Close strategy explanations"
+                  >
+                    <FaXmark aria-hidden="true" />
+                  </button>
+                </div>
+                <div className="info-popover__body">
+                  <p><strong>Fixed:</strong> Keeps withdrawals level in today's dollars. Example: on a $1,000,000 nest egg with a 4% target you withdraw $40,000 this year and adjust that amount only for inflation.</p>
+                  <p><strong>Variable %:</strong> Draws a set percentage of whatever the portfolio is worth each year. If you withdraw 4% from $1,000,000 ($40,000) and markets drop to $800,000, next year's withdrawal becomes $32,000.</p>
+                  <p><strong>Guardrails:</strong> Starts at your target withdrawal but increases or decreases it when the withdrawal rate drifts outside your guard band. For example, with a 4% goal and a +/-20% band you would raise spending if markets surge and trim it if the portfolio shrinks too far.</p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       {strategy === "variable_percentage" && (
         <div>
           <FieldHeader label="Variable percentage" help="Annual percentage of the portfolio withdrawn." />
@@ -823,9 +870,7 @@ export default function Inputs({
 
       <div className="divider" />
 
-      <button className="btn btn-primary btn-lg" onClick={onRun} disabled={running}>
-        {running ? "Running..." : "Run simulation"}
-      </button>
+      {renderRunActions('bottom')}
       <div className="help">We'll test your plan against every historical sequence and a block-bootstrap Monte Carlo simulation.</div>
     </div>
   )

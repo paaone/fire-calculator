@@ -99,6 +99,12 @@ export default function App() {
   const [hydratedFromURL, setHydratedFromURL] = useState(false)
   const [applyDefaultsPending, setApplyDefaultsPending] = useState(false)
 
+  useEffect(() => {
+    if (view === "results" && typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'auto' })
+    }
+  }, [view])
+
   const handleSpendChange = useCallback((value: number) => {
     const safe = Number.isFinite(value) ? Math.max(0, value) : 0
     setSpend(safe)
@@ -243,6 +249,8 @@ export default function App() {
   const errorMessage = histQuery.error || mcQuery.error ? String(histQuery.error ?? mcQuery.error) : ""
   const hist = histQuery.data
   const mc = mcQuery.data
+  const showHistoricalSuccess = Boolean(hist && hist.success_rate >= 80)
+  const showHistoricalWarn = Boolean(hist && hist.success_rate < 80)
 
   const applyDefaultsFromMeta = useCallback(
     (meta: MarketMetadata) => {
@@ -742,6 +750,7 @@ export default function App() {
       <div className="layout">
         <aside>
           <Inputs
+            variant="results"
             market={market}
             markets={marketOptions}
             onMarketChange={handleMarketChange}
@@ -787,6 +796,7 @@ export default function App() {
               mcQuery.refetch()
             }}
             running={loading}
+            onShare={copyShareLink}
             onApplyPreset={applyPreset}
           />
         </aside>
@@ -799,10 +809,9 @@ export default function App() {
               {stillWorking && <div className="badge badge-info">Estimated FI year: {baseYear + estimatedYearsToFI}</div>}
               {hist && <div className="badge badge-success">Historical success: {hist.success_rate.toFixed(1)}%</div>}
               {mc && <div className="badge badge-success">Monte Carlo success: {mc.success_rate.toFixed(1)}%</div>}
-              <ThemeToggle />
-              <button className="btn btn-secondary btn-sm" style={{ marginLeft: "auto" }} onClick={copyShareLink}>
-                Save & share
-              </button>
+              <div style={{ marginLeft: "auto" }}>
+                <ThemeToggle />
+              </div>
             </div>
             <div className="highlights__meta">
               Market data refreshes automatically. Source: {marketMeta?.source}. Coverage {marketMeta?.coverage.start} -
@@ -825,20 +834,7 @@ export default function App() {
             </div>
           </div>
 
-          <Accordion title="Advanced (Monte Carlo)" defaultOpen={false}>
-            <div className="row">
-              <div>
-                <span className="label">Simulated paths</span>
-                <input className="input" type="number" min={100} max={10000} step={100} value={nPaths} onChange={(e) => setNPaths(Number(e.target.value))} />
-              </div>
-              <div>
-                <span className="label">Block size (months)</span>
-                <input className="input" type="number" min={1} max={60} step={1} value={blockSize} onChange={(e) => setBlockSize(Number(e.target.value))} />
-              </div>
-            </div>
-          </Accordion>
-
-          {hist && hist.success_rate >= 80 && (
+          {showHistoricalSuccess && (
             <>
               <div className="callout">
                 <div className="hstack" style={{ gap: 8 }}>
@@ -848,6 +844,40 @@ export default function App() {
               </div>
               <ProjectionChart data={toSeriesWithUnits(hist)} title={`Historical projection (${unitLabel})`} currencyCode={currencyCode} milestones={chartMilestones} phases={chartPhases} />
               <CashFlowTable rows={toCashFlowRows(hist)} title={`Detailed cashflow table (${unitLabel})`} currencyCode={currencyCode} />
+            </>
+          )}
+
+          <Accordion title="Advanced (Monte Carlo)" defaultOpen={false}>
+            <div className="row">
+              <div>
+                <span className="label">Simulated paths</span>
+                <input
+                  className="input"
+                  type="number"
+                  min={100}
+                  max={10000}
+                  step={100}
+                  value={nPaths}
+                  onChange={(e) => setNPaths(Number(e.target.value))}
+                />
+              </div>
+              <div>
+                <span className="label">Block size (months)</span>
+                <input
+                  className="input"
+                  type="number"
+                  min={1}
+                  max={60}
+                  step={1}
+                  value={blockSize}
+                  onChange={(e) => setBlockSize(Number(e.target.value))}
+                />
+              </div>
+            </div>
+          </Accordion>
+
+          {showHistoricalSuccess && (
+            <>
               <ProjectionChart data={toSeriesWithUnits(mc)} title={`Monte Carlo projection (${unitLabel})`} currencyCode={currencyCode} milestones={chartMilestones} phases={chartPhases} />
               <Histogram
                 values={valueUnits === "nominal" ? hist.ending_balances.map((v) => v * Math.pow(1 + inflationPct / 100, years)) : hist.ending_balances}
@@ -857,7 +887,7 @@ export default function App() {
             </>
           )}
 
-          {hist && hist.success_rate < 80 && (
+          {showHistoricalWarn && (
             <div className="callout-warn">
               <div className="hstack" style={{ gap: 8 }}>
                 <FaCircleExclamation color="#b45309" />
@@ -870,4 +900,3 @@ export default function App() {
     </div>
   )
 }
-

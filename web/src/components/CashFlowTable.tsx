@@ -42,12 +42,13 @@ export default function CashFlowTable({ rows, title, currencyCode = "USD" }: { r
           <tbody>
             {rows.map((r) => {
               const yearAge = r.age ? `${r.year} (${r.age})` : String(r.year)
+              const basicClass = r.basic < 0 ? "table-cell-saving" : "table-cell-spend"
               return (
                 <tr key={r.year}>
                   <td>{yearAge}</td>
                   <td>{currency(r.startMedian)}</td>
                   <td>{currency(r.startP10)}</td>
-                  <td>{currency(r.basic)}</td>
+                  <td className={basicClass}>{currency(r.basic)}</td>
                   {hasOtherSpending && <td>{currency(r.otherSpending)}</td>}
                   {hasOtherIncome && <td>{currency(r.otherIncome)}</td>}
                   <td>{currency(r.cashFlow)}</td>

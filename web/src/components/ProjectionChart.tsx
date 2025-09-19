@@ -63,7 +63,7 @@ export default function ProjectionChart({ data, title, currencyCode = "USD", mil
                 <stop offset="95%" stopColor="#bae6fd" stopOpacity={0.15} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
             <XAxis dataKey="year" ticks={yearTicks(data)} tickLine={false} axisLine={false} dy={8} />
             <YAxis
               tickFormatter={(value: number) => compactFormatter.format(value)}
