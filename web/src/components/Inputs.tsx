@@ -867,6 +867,7 @@ export default function Inputs({
           </div>
         </div>
       )}
+      </div>
 
       <div className="divider" />
 
