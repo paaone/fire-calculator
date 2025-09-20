@@ -102,6 +102,7 @@ class SimRequest(BaseModel):
     annual_contrib: float = Field(0, ge=0)
     income_amount: float = Field(0, ge=0)
     income_start_year: int = Field(0, ge=0, le=60)
+    income_duration_years: int = Field(0, ge=0, le=60)
     other_incomes: list[CategorisedIncome] = Field(default_factory=list)
     one_time_expenses: list[CategorisedExpense] = Field(default_factory=list)
 

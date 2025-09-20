@@ -23,6 +23,7 @@ class MarketDefaults:
     annual_contrib: float = 0.0
     income_amount: float = 0.0
     income_start_year: int = 0
+    income_duration_years: int = 0
     start_delay_years: int = 0
     n_paths: int = 1000
     block_size: int = 12

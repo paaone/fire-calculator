@@ -8,7 +8,7 @@ type InputsProps = ComponentProps<typeof Inputs>
 const makeProps = (overrides: Partial<InputsProps> = {}): InputsProps => ({
   market: "us",
   markets: [
-    { key: "us", label: "United States" },
+    { key: "us", label: "US" },
     { key: "india", label: "India" },
   ],
   onMarketChange: vi.fn(),
@@ -35,6 +35,8 @@ const makeProps = (overrides: Partial<InputsProps> = {}): InputsProps => ({
   onIncomeAmount: vi.fn(),
   incomeStartYear: 0,
   onIncomeStartYear: vi.fn(),
+  incomeDurationYears: 0,
+  onIncomeDurationYears: vi.fn(),
   stillWorking: true,
   onStillWorking: vi.fn(),
   expectedRealReturn: 5,

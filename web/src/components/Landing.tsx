@@ -1,4 +1,5 @@
 import Inputs, { StrategyName, MarketSelection } from "./Inputs"
+import { ThemeToggle } from "../theme/ThemeToggle"
 import { SpendingCategoryPlan, FutureExpensePlan, FutureIncomePlan } from "../lib/planning"
 
 interface MarketOption {
@@ -33,6 +34,8 @@ type LandingProps = {
   onIncomeAmount: (v: number) => void
   incomeStartYear: number
   onIncomeStartYear: (v: number) => void
+  incomeDurationYears: number
+  onIncomeDurationYears: (v: number) => void
   stillWorking: boolean
   onStillWorking: (v: boolean) => void
   expectedRealReturn: number
@@ -56,8 +59,11 @@ type LandingProps = {
 export default function Landing(p: LandingProps) {
   return (
     <div className="landing">
+      <div className="landing__topbar">
+        <ThemeToggle />
+      </div>
       <section className="landing__hero">
-        <h1>Plan your FIRE journey</h1>
+        <h1>The Ultimate Fire Calculator</h1>
         <p>
           Stress-test your spending plan against every historical market path and a modern Monte Carlo simulation. Toggle markets,
           adjust assumptions, and get a feel for your odds before you pull the trigger.
@@ -93,6 +99,8 @@ export default function Landing(p: LandingProps) {
           onIncomeAmount={p.onIncomeAmount}
           incomeStartYear={p.incomeStartYear}
           onIncomeStartYear={p.onIncomeStartYear}
+          incomeDurationYears={p.incomeDurationYears}
+          onIncomeDurationYears={p.onIncomeDurationYears}
           stillWorking={p.stillWorking}
           onStillWorking={p.onStillWorking}
           expectedRealReturn={p.expectedRealReturn}

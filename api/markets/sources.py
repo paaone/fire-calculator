@@ -124,6 +124,7 @@ def build_market_definitions() -> Tuple[MarketDefinition, MarketDefinition]:
         annual_contrib=20_000,
         income_amount=0.0,
         income_start_year=0,
+        income_duration_years=0,
         start_delay_years=0,
     )
     india_defaults = MarketDefaults(
@@ -136,12 +137,13 @@ def build_market_definitions() -> Tuple[MarketDefinition, MarketDefinition]:
         annual_contrib=0.0,
         income_amount=0.0,
         income_start_year=0,
+        income_duration_years=0,
         start_delay_years=0,
     )
 
     us = MarketDefinition(
         key="us",
-        label="United States",
+        label="US",
         currency="USD",
         source="Ken French CRSP market + FRED CPIAUCSL",
         cache_name="market_us_monthly_real.csv",

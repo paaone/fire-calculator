@@ -8,7 +8,7 @@ const mockMarkets = {
   markets: [
     {
       key: "us",
-      label: "United States",
+      label: "US",
       currency: "USD",
       source: "Test",
       notes: "",

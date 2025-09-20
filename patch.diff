@@ -1,0 +1,85 @@
+﻿diff --git a/web/src/components/Inputs.tsx b/web/src/components/Inputs.tsx
+index b3c57b1cbe6f..f35bcaed8425 100644
+--- a/web/src/components/Inputs.tsx
++++ b/web/src/components/Inputs.tsx
+@@
+-import { useMemo, useState, useEffect } from "react"
++import { useMemo, useState, useEffect, useId, useRef } from "react"
+@@
+-  incomeStartYear: number
+-  onIncomeStartYear: (v: number) => void
++  incomeStartYear: number
++  onIncomeStartYear: (v: number) => void
++  incomeDurationYears: number
++  onIncomeDurationYears: (v: number) => void
+@@
+-function FieldHeader({ label, help }: { label: string; help?: string }) {
+-  return (
+-    <div className="field-header">
+-      <div className="field-header__row">
+-        <span className="label">{label}</span>
+-        {help && (
+-          <span className="field-header__info" title={help} aria-label={help}>
+-            <FaCircleInfo aria-hidden="true" />
+-          </span>
+-        )}
++function FieldHeader({ label, help }: { label: string; help?: string }) {
++  const [open, setOpen] = useState(false)
++  const infoId = useId()
++  const infoRef = useRef<HTMLDivElement | null>(null)
++
++  useEffect(() => {
++    if (!open) return
++    const handlePointer = (event: MouseEvent) => {
++      if (!infoRef.current?.contains(event.target as Node)) {
++        setOpen(false)
++      }
++    }
++    const handleKey = (event: KeyboardEvent) => {
++      if (event.key === "Escape") {
++        setOpen(false)
++      }
++    }
++    document.addEventListener("mousedown", handlePointer)
++    document.addEventListener("keydown", handleKey)
++    return () => {
++      document.removeEventListener("mousedown", handlePointer)
++      document.removeEventListener("keydown", handleKey)
++    }
++  }, [open])
++
++  return (
++    <div className="field-header">
++      <div className="field-header__row">
++        <span className="label">{label}</span>
++        {help && (
++          <div className="field-header__info" ref={infoRef}>
++            <button
++              type="button"
++              className="field-header__info-btn"
++              onClick={() => setOpen((prev) => !prev)}
++              aria-label={`Learn more about ${label}`}
++              aria-expanded={open}
++              aria-controls={infoId}
++            >
++              <FaCircleInfo aria-hidden="true" />
++            </button>
++            {open && (
++              <div className="field-header__popover" role="dialog" id={infoId} aria-label={label}>
++                <div className="field-header__popover-body">{help}</div>
++                <button
++                  type="button"
++                  className="field-header__info-close"
++                  onClick={() => setOpen(false)}
++                  aria-label="Close help"
++                >
++                  <FaXmark aria-hidden="true" />
++                </button>
++              </div>
++            )}
++          </div>
++        )}
+       </div>
+     </div>
+   )
+ }

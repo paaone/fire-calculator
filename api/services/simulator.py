@@ -27,6 +27,7 @@ def _simulate_path_with_planning(
     annual_contrib: float = 0.0,
     income_amount: float = 0.0,
     income_start_year: int = 0,
+    income_duration_years: int = 0,
     other_incomes: Optional[List[Dict]] = None,
     one_time_expenses: Optional[List[Dict]] = None,
 ) -> Tuple[np.ndarray, float]:
@@ -66,7 +67,10 @@ def _simulate_path_with_planning(
                     spend = spend_this_year
 
                 retire_year = year_index - start_delay_years
-                income = income_amount if retire_year >= max(0, income_start_year) else 0.0
+                income_active = retire_year >= max(0, income_start_year)
+                if income_duration_years > 0:
+                    income_active = income_active and retire_year < max(0, income_start_year) + income_duration_years
+                income = income_amount if income_active else 0.0
                 # Add other recurring incomes that have started
                 for inc in other_incomes:
                     try:
@@ -107,6 +111,7 @@ def simulate_historical(
     annual_contrib: float = 0.0,
     income_amount: float = 0.0,
     income_start_year: int = 0,
+    income_duration_years: int = 0,
     other_incomes: Optional[List[Dict]] = None,
     one_time_expenses: Optional[List[Dict]] = None,
 ) -> Dict:
@@ -132,6 +137,7 @@ def simulate_historical(
             annual_contrib,
             income_amount,
             income_start_year,
+            income_duration_years,
             other_incomes,
             one_time_expenses,
         )
@@ -175,6 +181,7 @@ def simulate_monte_carlo(
     annual_contrib: float = 0.0,
     income_amount: float = 0.0,
     income_start_year: int = 0,
+    income_duration_years: int = 0,
     other_incomes: Optional[List[Dict]] = None,
     one_time_expenses: Optional[List[Dict]] = None,
 ) -> Dict:
@@ -194,6 +201,7 @@ def simulate_monte_carlo(
             annual_contrib,
             income_amount,
             income_start_year,
+            income_duration_years,
             other_incomes,
             one_time_expenses,
         )

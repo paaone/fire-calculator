@@ -15,6 +15,7 @@ export interface MarketDefaults {
   annual_contrib: number
   income_amount: number
   income_start_year: number
+  income_duration_years: number
   start_delay_years: number
   n_paths: number
   block_size: number
@@ -56,6 +57,7 @@ export interface SimRequest {
   annual_contrib?: number
   income_amount?: number
   income_start_year?: number
+  income_duration_years?: number
   other_incomes?: { amount: number; start_year: number }[]
   one_time_expenses?: { amount: number; at_year_from_now: number }[]
   profile?: ClientProfile
@@ -73,7 +75,7 @@ export interface SimResult {
 const API_BASE = (import.meta as any).env?.VITE_API_BASE || "http://localhost:8000"
 
 const VALIDATION_LABELS: Record<string, string> = {
-  market: "Market data set",
+  market: "Market",
   initial: "Current invested portfolio",
   spend: "Total annual living expenses",
   years: "Years to fund",
@@ -82,8 +84,9 @@ const VALIDATION_LABELS: Record<string, string> = {
   annual_contrib: "Annual savings until retirement",
   income_amount: "Recurring income amount",
   income_start_year: "Recurring income start year",
+  income_duration_years: "Recurring income duration",
   other_incomes: "Other incomes",
-  one_time_expenses: "Future spending events",
+  one_time_expenses: "Future Spending Events",
   n_paths: "Simulated paths",
   block_size: "Block size",
 }

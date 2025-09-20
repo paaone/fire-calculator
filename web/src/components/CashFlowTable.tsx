@@ -16,6 +16,12 @@ export default function CashFlowTable({ rows, title, currencyCode = "USD" }: { r
   const locale = currencyCode === "INR" ? "en-IN" : undefined
   const formatter = useMemo(() => new Intl.NumberFormat(locale ?? undefined, { style: "currency", currency: currencyCode, maximumFractionDigits: 0 }), [currencyCode, locale])
   const currency = (n: number) => formatter.format(n)
+  const currencyNet = (n: number) => {
+    if (n < 0) {
+      return `(${formatter.format(Math.abs(n))})`
+    }
+    return formatter.format(n)
+  }
 
   if (!rows?.length) return null
 
@@ -44,15 +50,21 @@ export default function CashFlowTable({ rows, title, currencyCode = "USD" }: { r
             {rows.map((r) => {
               const yearAge = r.age ? `${r.year} (${r.age})` : String(r.year)
               const basicClass = r.isSavingsYear ? "table-cell-saving" : "table-cell-spend"
+              const otherSpendingClass = r.otherSpending > 0 ? "table-cell-spend" : r.otherSpending < 0 ? "table-cell-saving" : ""
+              const otherIncomeClass = r.otherIncome > 0 ? "table-cell-saving" : r.otherIncome < 0 ? "table-cell-spend" : ""
               return (
                 <tr key={r.year}>
                   <td>{yearAge}</td>
                   <td>{currency(r.startMedian)}</td>
                   <td>{currency(r.startP10)}</td>
                   <td className={basicClass}>{currency(r.basic)}</td>
-                  {hasOtherSpending && <td>{currency(r.otherSpending)}</td>}
-                  {hasOtherIncome && <td>{currency(r.otherIncome)}</td>}
-                  <td>{currency(r.cashFlow)}</td>
+                  {hasOtherSpending && (
+                    <td className={otherSpendingClass || undefined}>{currency(r.otherSpending)}</td>
+                  )}
+                  {hasOtherIncome && (
+                    <td className={otherIncomeClass || undefined}>{currency(r.otherIncome)}</td>
+                  )}
+                  <td className="table-cell-net-flow">{currencyNet(r.cashFlow)}</td>
                 </tr>
               )
             })}

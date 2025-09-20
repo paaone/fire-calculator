@@ -83,6 +83,7 @@ export default function App() {
   const [annualContrib, setAnnualContrib] = useState(0)
   const [incomeAmount, setIncomeAmount] = useState(0)
   const [incomeStartYear, setIncomeStartYear] = useState(0)
+  const [incomeDurationYears, setIncomeDurationYears] = useState(0)
   const [stillWorking, setStillWorking] = useState(true)
   const [expectedRealReturn, setExpectedRealReturn] = useState(5)
   const [spendingCategories, setSpendingCategories] = useState<SpendingCategoryPlan[]>(() =>
@@ -183,6 +184,12 @@ export default function App() {
     markCustom()
     setIncomeStartYear(value)
   }, [incomeStartYear, markCustom])
+
+  const handleIncomeDurationYearsChange = useCallback((value: number) => {
+    if (value === incomeDurationYears) return
+    markCustom()
+    setIncomeDurationYears(value)
+  }, [incomeDurationYears, markCustom])
 
   const handleStillWorkingChange = useCallback((value: boolean) => {
     if (value === stillWorking) return
@@ -315,6 +322,7 @@ export default function App() {
       annual_contrib: annualContrib,
       income_amount: incomeAmount,
       income_start_year: incomeStartYear,
+      income_duration_years: incomeDurationYears,
       other_incomes: requestIncomes,
       one_time_expenses: requestExpenses,
       profile: { current_age: currentAge },
@@ -329,6 +337,7 @@ export default function App() {
       annualContrib,
       incomeAmount,
       incomeStartYear,
+      incomeDurationYears,
       requestIncomes,
       requestExpenses,
       currentAge,
@@ -367,6 +376,7 @@ export default function App() {
       setAnnualContrib(d.annual_contrib)
       setIncomeAmount(d.income_amount)
       setIncomeStartYear(d.income_start_year)
+      setIncomeDurationYears(d.income_duration_years ?? 0)
       setStartDelayYears(d.start_delay_years)
       setNPaths(d.n_paths)
       setBlockSize(d.block_size)
@@ -420,6 +430,7 @@ export default function App() {
     setStartDelayYears(num("sd", startDelayYears))
     setIncomeAmount(num("ia", incomeAmount))
     setIncomeStartYear(num("isy", incomeStartYear))
+    setIncomeDurationYears(num("idy", incomeDurationYears))
 
     const st = str("st", strategyName) as StrategyName
     setStrategyName(st)
@@ -650,7 +661,9 @@ export default function App() {
       const otherSpending = valueUnits === "nominal" ? expenseBucket.nominal : expenseBucket.real
       const incomeBucket = incomeSchedule.get(y) ?? { nominal: 0, real: 0 }
       const otherIncome = valueUnits === "nominal" ? incomeBucket.nominal : incomeBucket.real
-      const recurringIncomeReal = y >= incomeStartYear ? incomeAmount : 0
+      const retirementYear = y - incomeStartYear
+      const isRecurringIncomeActive = y >= incomeStartYear && (incomeDurationYears <= 0 || retirementYear < incomeDurationYears)
+      const recurringIncomeReal = isRecurringIncomeActive ? incomeAmount : 0
       const recurringIncome = valueUnits === "nominal" ? recurringIncomeReal * unitFactor : recurringIncomeReal
       const basic = baseBasic * unitFactor
       const netIncome = recurringIncome + otherIncome
@@ -687,6 +700,7 @@ export default function App() {
       setStrategyName("fixed")
       setIncomeAmount(0)
       setIncomeStartYear(0)
+      setIncomeDurationYears(0)
       setStartDelayYears(0)
       setFutureIncomes([])
       setFutureExpenses([])
@@ -703,6 +717,7 @@ export default function App() {
       setStrategyName("fixed")
       setIncomeAmount(0)
       setIncomeStartYear(0)
+      setIncomeDurationYears(0)
       setStartDelayYears(0)
       setFutureIncomes([])
       setFutureExpenses([])
@@ -719,6 +734,7 @@ export default function App() {
       setStrategyName("fixed")
       setIncomeAmount(0)
       setIncomeStartYear(0)
+      setIncomeDurationYears(0)
       setStartDelayYears(0)
       setFutureIncomes([])
       setFutureExpenses([])
@@ -754,6 +770,7 @@ export default function App() {
     params.set("sd", String(startDelayYears))
     params.set("ia", String(incomeAmount))
     params.set("isy", String(incomeStartYear))
+    params.set("idy", String(incomeDurationYears))
     params.set("st", strategyName)
     params.set("inf", String(inflationPct))
     params.set("vu", valueUnits)
@@ -833,6 +850,8 @@ export default function App() {
         onIncomeAmount={handleIncomeAmountChange}
         incomeStartYear={incomeStartYear}
         onIncomeStartYear={handleIncomeStartYearChange}
+        incomeDurationYears={incomeDurationYears}
+        onIncomeDurationYears={handleIncomeDurationYearsChange}
         stillWorking={stillWorking}
         onStillWorking={handleStillWorkingChange}
         expectedRealReturn={expectedRealReturn}
@@ -887,6 +906,8 @@ export default function App() {
             onIncomeAmount={handleIncomeAmountChange}
             incomeStartYear={incomeStartYear}
             onIncomeStartYear={handleIncomeStartYearChange}
+            incomeDurationYears={incomeDurationYears}
+            onIncomeDurationYears={handleIncomeDurationYearsChange}
             stillWorking={stillWorking}
             onStillWorking={handleStillWorkingChange}
             expectedRealReturn={expectedRealReturn}
