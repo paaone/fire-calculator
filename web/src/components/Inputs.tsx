@@ -592,6 +592,7 @@ export default function Inputs({
               step={0.1}
               value={expectedRealReturn}
               onChange={(value) => onExpectedRealReturn(value)}
+              disabled={!stillWorking}
             />
           </div>
         </div>

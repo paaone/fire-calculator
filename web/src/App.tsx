@@ -67,6 +67,85 @@ function expenseLabel(category: FutureExpensePlan["category"], label?: string): 
   return EXPENSE_LABEL_FALLBACK[category] ?? "Future expense"
 }
 
+interface HistoricalAnalysis {
+  successRate: number
+  bestCase: number
+  worstCase: number
+  zeroYear: number | null
+  yearsToZero: number | null
+}
+
+function analyzeHistoricalResults(hist: any, years: number, currencyCode: string, valueUnits: "real" | "nominal", inflationPct: number): HistoricalAnalysis {
+  if (!hist || !hist.ending_balances || !hist.sample_path) {
+    return {
+      successRate: 0,
+      bestCase: 0,
+      worstCase: 0,
+      zeroYear: null,
+      yearsToZero: null
+    }
+  }
+
+  // Apply the same transformation as the histogram for consistency
+  const adjustedBalances = valueUnits === "nominal" 
+    ? hist.ending_balances.map((v: number) => v * Math.pow(1 + inflationPct / 100, years))
+    : hist.ending_balances
+
+  const bestCase = Math.max(...adjustedBalances)
+  const worstCase = Math.min(...adjustedBalances)
+  
+  // Check if portfolio goes to zero in the sample path
+  let zeroYear: number | null = null
+  let yearsToZero: number | null = null
+  
+  if (hist.sample_path && hist.sample_path.length > 0) {
+    const monthsInPath = hist.sample_path.length
+    for (let i = 0; i < monthsInPath; i++) {
+      if (hist.sample_path[i] <= 0) {
+        zeroYear = Math.floor(i / 12) + 1 // Convert months to years (1-indexed)
+        yearsToZero = years - zeroYear + 1 // Years remaining after hitting zero
+        break
+      }
+    }
+  }
+
+  return {
+    successRate: hist.success_rate,
+    bestCase,
+    worstCase,
+    zeroYear,
+    yearsToZero
+  }
+}
+
+function formatCurrencyCompact(amount: number, currencyCode: string): string {
+  const symbol = currencyCode === 'INR' ? '₹' : '$'
+  
+  if (currencyCode === 'INR') {
+    // For Indian market, use Crore (10 million) and Lakh (100 thousand) system
+    if (amount >= 10000000) { // 1 crore+
+      return `${symbol}${(amount / 10000000).toFixed(1)} Cr`
+    } else if (amount >= 100000) { // 1 lakh+
+      return `${symbol}${(amount / 100000).toFixed(1)} L`
+    } else if (amount >= 1000) {
+      return `${symbol}${(amount / 1000).toFixed(0)}K`
+    } else {
+      return `${symbol}${amount.toFixed(0)}`
+    }
+  } else {
+    // For other currencies (USD), use Million system
+    if (amount >= 10000000) { // 10 million+
+      return `${symbol}${(amount / 1000000).toFixed(1)}M`
+    } else if (amount >= 1000000) { // 1 million+
+      return `${symbol}${(amount / 1000000).toFixed(2)}M`
+    } else if (amount >= 1000) {
+      return `${symbol}${(amount / 1000).toFixed(0)}K`
+    } else {
+      return `${symbol}${amount.toFixed(0)}`
+    }
+  }
+}
+
 type ViewMode = "landing" | "results"
 
 export default function App() {
@@ -592,13 +671,13 @@ export default function App() {
 
   const toSeries = useCallback(
     (res: any): SeriesPoint[] =>
-      (res?.quantiles?.p90 || []).map((_: number, index: number) => ({
+      (res?.quantiles?.p95 || []).map((_: number, index: number) => ({
         month: index + 1,
         year: baseYear + Math.floor(index / 12),
-        p10: res.quantiles.p10[index],
+        p5: res.quantiles.p5[index],
         p50: res.quantiles.p50[index],
-        p90: res.quantiles.p90[index],
-        band: res.quantiles.p90[index] - res.quantiles.p10[index],
+        p95: res.quantiles.p95[index],
+        band: res.quantiles.p95[index] - res.quantiles.p5[index],
       })),
     [baseYear],
   )
@@ -613,7 +692,7 @@ export default function App() {
         const factor = Math.pow(rate, yearsElapsed)
         return {
           ...point,
-          p10: point.p10 * factor,
+          p5: point.p5 * factor,
           p50: point.p50 * factor,
           band: point.band * factor,
         }
@@ -638,7 +717,7 @@ export default function App() {
     for (let y = 0; y < yearsCount; y++) {
       const prevIdx = y * 12 - 1
       const startMedianReal = y === 0 ? initialTotal : Number(res.quantiles.p50[prevIdx] ?? 0)
-      const startP10Real = y === 0 ? initialTotal : Number(res.quantiles.p10[prevIdx] ?? 0)
+      const startP5Real = y === 0 ? initialTotal : Number(res.quantiles.p5[prevIdx] ?? 0)
       const unitFactor = valueUnits === "nominal" ? Math.pow(inflationRate, y) : 1
       let baseBasic = 0
 
@@ -675,7 +754,7 @@ export default function App() {
         year: baseYear + y,
         age,
         startMedian: startMedianReal * unitFactor,
-        startP10: startP10Real * unitFactor,
+        startP5: startP5Real * unitFactor,
         basic,
         otherSpending,
         otherIncome: netIncome,
@@ -688,32 +767,38 @@ export default function App() {
   }
 
   const applyPreset = useCallback((name: "lean" | "baseline" | "fat") => {
-    if (name === "lean") {
-      const total = 25_000
-      setInitial(500_000)
-      setSpendingCategories(defaultSpendingCategories(total))
-      setSpend(total)
-      setYears(30)
-      setStillWorking(true)
-      setAnnualContrib(15_000)
-      setExpectedRealReturn(5)
+    const defaults = marketMeta?.defaults
+    if (!defaults) return
+
+    if (name === "baseline") {
+      setInitial(defaults.initial)
+      setSpendingCategories(defaultSpendingCategories(defaults.spend))
+      setSpend(defaults.spend)
+      setYears(defaults.years)
+      setStillWorking(defaults.still_working)
+      setAnnualContrib(defaults.annual_contrib)
+      setExpectedRealReturn(defaults.expected_real_return_pct)
       setStrategyName("fixed")
-      setIncomeAmount(0)
-      setIncomeStartYear(0)
-      setIncomeDurationYears(0)
-      setStartDelayYears(0)
+      setIncomeAmount(defaults.income_amount)
+      setIncomeStartYear(defaults.income_start_year)
+      setIncomeDurationYears(defaults.income_duration_years)
+      setStartDelayYears(defaults.start_delay_years)
       setFutureIncomes([])
       setFutureExpenses([])
       setValueUnits("real")
-    } else if (name === "baseline") {
-      const total = 40_000
-      setInitial(1_000_000)
-      setSpendingCategories(defaultSpendingCategories(total))
-      setSpend(total)
-      setYears(30)
+    } else if (name === "lean") {
+      // Lean FIRE ratios: 0.5x initial, 0.625x spending, 0.75x contribution
+      const leanInitial = Math.round(defaults.initial * 0.5 / 1000) * 1000
+      const leanSpend = Math.round(defaults.spend * 0.625 / 1000) * 1000
+      const leanContrib = Math.round(defaults.annual_contrib * 0.75 / 1000) * 1000
+      
+      setInitial(leanInitial)
+      setSpendingCategories(defaultSpendingCategories(leanSpend))
+      setSpend(leanSpend)
+      setYears(defaults.years)
       setStillWorking(true)
-      setAnnualContrib(20_000)
-      setExpectedRealReturn(5)
+      setAnnualContrib(leanContrib)
+      setExpectedRealReturn(defaults.expected_real_return_pct)
       setStrategyName("fixed")
       setIncomeAmount(0)
       setIncomeStartYear(0)
@@ -723,14 +808,18 @@ export default function App() {
       setFutureExpenses([])
       setValueUnits("real")
     } else {
-      const total = 100_000
-      setInitial(2_000_000)
-      setSpendingCategories(defaultSpendingCategories(total))
-      setSpend(total)
-      setYears(35)
+      // Fat FIRE ratios: 2x initial, 2.5x spending, 0x contribution (already retired)
+      const fatInitial = Math.round(defaults.initial * 2 / 1000) * 1000
+      const fatSpend = Math.round(defaults.spend * 2.5 / 1000) * 1000
+      const fatYears = Math.max(defaults.years + 5, 35) // Add 5 years or min 35
+      
+      setInitial(fatInitial)
+      setSpendingCategories(defaultSpendingCategories(fatSpend))
+      setSpend(fatSpend)
+      setYears(fatYears)
       setStillWorking(false)
       setAnnualContrib(0)
-      setExpectedRealReturn(4)
+      setExpectedRealReturn(Math.max(defaults.expected_real_return_pct - 1, 4)) // Slightly lower return
       setStrategyName("fixed")
       setIncomeAmount(0)
       setIncomeStartYear(0)
@@ -741,7 +830,7 @@ export default function App() {
       setValueUnits("real")
     }
     setActivePreset(name)
-  }, [])
+  }, [marketMeta])
 
   const fireTarget = fireTargetFromSpend(spend, 0.04)
   const estimatedYearsToFI = computeYearsToFI({
@@ -971,10 +1060,67 @@ export default function App() {
               <div className="callout">
                 <div className="hstack" style={{ gap: 8 }}>
                   <FaCircleCheck color="#16a34a" />
-                  <strong>You're FI-ready based on history.</strong> Success rate is at least 80%. Explore the range below.
+                  <strong>You're FI-ready based on history.</strong> Success rate is <strong>{hist?.success_rate.toFixed(1) ?? '0'}%</strong>. Explore the range below.
                 </div>
               </div>
+
+              {hist && (() => {
+                const analysis = analyzeHistoricalResults(hist, years, currencyCode, valueUnits, inflationPct)
+                return (
+                  <div className="callout" style={{ backgroundColor: 'var(--color-surface-secondary)', border: '1px solid var(--color-border)' }}>
+                    <div style={{ marginBottom: '12px' }}>
+                      <h4 style={{ margin: '0 0 8px 0', fontSize: '1.1em' }}>Historical Analysis & Sequence of Returns</h4>
+                      <p style={{ margin: '0 0 12px 0', fontSize: '0.9em', color: 'var(--color-text-secondary)' }}>
+                        <strong>Sequence of returns risk</strong> refers to the danger of experiencing poor investment returns early in retirement, 
+                        which can permanently damage your portfolio's ability to sustain withdrawals. Even with the same average returns over time, 
+                        bad early years can deplete your portfolio faster than it can recover.
+                      </p>
+                    </div>
+                    
+                    <div className="grid" style={{ gap: '16px', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))' }}>
+                      <div>
+                        <div style={{ fontWeight: 'bold', color: '#16a34a' }}>Best Case Scenario</div>
+                        <div style={{ fontSize: '1.2em', fontWeight: 'bold' }}>{formatCurrencyCompact(analysis.bestCase, currencyCode)}</div>
+                        <div style={{ fontSize: '0.85em', color: 'var(--color-text-secondary)' }}>Highest portfolio value after {years} years</div>
+                      </div>
+                      
+                      <div>
+                        <div style={{ fontWeight: 'bold', color: '#dc2626' }}>Worst Case Scenario</div>
+                        <div style={{ fontSize: '1.2em', fontWeight: 'bold' }}>{formatCurrencyCompact(analysis.worstCase, currencyCode)}</div>
+                        <div style={{ fontSize: '0.85em', color: 'var(--color-text-secondary)' }}>
+                          {analysis.worstCase <= 0 ? 'Portfolio depleted' : `Lowest portfolio value after ${years} years`}
+                        </div>
+                      </div>
+
+                      {analysis.zeroYear && (
+                        <div>
+                          <div style={{ fontWeight: 'bold', color: '#dc2626' }}>Portfolio Depletion</div>
+                          <div style={{ fontSize: '1.2em', fontWeight: 'bold' }}>Year {analysis.zeroYear}</div>
+                          <div style={{ fontSize: '0.85em', color: 'var(--color-text-secondary)' }}>
+                            {analysis.yearsToZero && analysis.yearsToZero > 0 
+                              ? `${analysis.yearsToZero} years of shortfall` 
+                              : 'Portfolio reaches zero'}
+                          </div>
+                        </div>
+                      )}
+                      
+                      <div>
+                        <div style={{ fontWeight: 'bold', color: '#2563eb' }}>Success Rate</div>
+                        <div style={{ fontSize: '1.2em', fontWeight: 'bold' }}>{analysis.successRate.toFixed(1)}%</div>
+                        <div style={{ fontSize: '0.85em', color: 'var(--color-text-secondary)' }}>
+                          {hist.num_windows} historical {years}-year periods tested
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })()}
               <ProjectionChart data={toSeriesWithUnits(hist)} title={`Historical projection (${unitLabel})`} currencyCode={currencyCode} milestones={chartMilestones} phases={chartPhases} />
+              <Histogram
+                values={valueUnits === "nominal" ? hist!.ending_balances.map((v) => v * Math.pow(1 + inflationPct / 100, years)) : hist!.ending_balances}
+                title={`Historical ending balances (${unitLabel})`}
+                currencyCode={currencyCode}
+              />
               <CashFlowTable rows={toCashFlowRows(hist)} title={`Detailed cashflow table (${unitLabel})`} currencyCode={currencyCode} />
             </>
           )}
@@ -1008,15 +1154,8 @@ export default function App() {
             </div>
           </Accordion>
 
-          {showHistoricalSuccess && (
-            <>
-              <ProjectionChart data={toSeriesWithUnits(mc)} title={`Monte Carlo projection (${unitLabel})`} currencyCode={currencyCode} milestones={chartMilestones} phases={chartPhases} />
-              <Histogram
-                values={valueUnits === "nominal" ? hist.ending_balances.map((v) => v * Math.pow(1 + inflationPct / 100, years)) : hist.ending_balances}
-                title={`Historical ending balances (${unitLabel})`}
-                currencyCode={currencyCode}
-              />
-            </>
+          {mc && (
+            <ProjectionChart data={toSeriesWithUnits(mc)} title={`Monte Carlo projection (${unitLabel})`} currencyCode={currencyCode} milestones={chartMilestones} phases={chartPhases} />
           )}
 
           {showHistoricalWarn && (

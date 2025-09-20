@@ -68,7 +68,7 @@ export interface SimResult {
   num_windows: number
   success_rate: number
   ending_balances: number[]
-  quantiles: { p10: number[]; p50: number[]; p90: number[] }
+  quantiles: { p5: number[]; p50: number[]; p95: number[] }
   sample_path: number[]
 }
 

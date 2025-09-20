@@ -129,16 +129,16 @@ def build_market_definitions() -> Tuple[MarketDefinition, MarketDefinition]:
     )
     india_defaults = MarketDefaults(
         initial=50_000_000,
-        spend=2_000_000,
-        years=16,
+        spend=3_000_000,
+        years=30,
         inflation_pct=6.0,
         expected_real_return_pct=10.0,
-        still_working=False,
-        annual_contrib=0.0,
+        still_working=True,
+        annual_contrib=2_000_000.0,
         income_amount=0.0,
         income_start_year=0,
         income_duration_years=0,
-        start_delay_years=0,
+        start_delay_years=5,
     )
 
     us = MarketDefinition(
@@ -156,11 +156,11 @@ def build_market_definitions() -> Tuple[MarketDefinition, MarketDefinition]:
         key="india",
         label="India",
         currency="INR",
-        source="Yahoo Finance ^NSEI + FRED INDCPIALLMINMEI",
+        source="BSE India + FRED INDCPIALLMINMEI",
         cache_name="market_india_monthly_real.csv",
         builder=build_india_real_returns,
         defaults=india_defaults,
-        notes="NIFTY 50 total return proxy with Indian CPI deflator.",
+        notes="BSE market index with Indian CPI deflator.",
     )
 
     return us, india

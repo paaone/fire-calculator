@@ -38,7 +38,7 @@ const mockSimResult = {
   num_windows: 1,
   success_rate: 100,
   ending_balances: [1],
-  quantiles: { p10: [1], p50: [1], p90: [1] },
+  quantiles: { p5: [1], p50: [1], p95: [1] },
   sample_path: [1],
 }
 

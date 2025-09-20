@@ -4,7 +4,7 @@ export interface CashFlowRow {
   year: number
   age?: number
   startMedian: number
-  startP10: number
+  startP5: number
   basic: number
   otherSpending: number
   otherIncome: number
@@ -39,7 +39,7 @@ export default function CashFlowTable({ rows, title, currencyCode = "USD" }: { r
             <tr>
               <th>Year / Age</th>
               <th>Starting Balance (Median)</th>
-              <th>Starting Balance (10th %)</th>
+              <th>Starting Balance (5th %)</th>
               <th>Basic Spend / Save</th>
               {hasOtherSpending && <th>Other Spending</th>}
               {hasOtherIncome && <th>Other Income</th>}
@@ -56,7 +56,7 @@ export default function CashFlowTable({ rows, title, currencyCode = "USD" }: { r
                 <tr key={r.year}>
                   <td>{yearAge}</td>
                   <td>{currency(r.startMedian)}</td>
-                  <td>{currency(r.startP10)}</td>
+                  <td>{currency(r.startP5)}</td>
                   <td className={basicClass}>{currency(r.basic)}</td>
                   {hasOtherSpending && (
                     <td className={otherSpendingClass || undefined}>{currency(r.otherSpending)}</td>

@@ -119,9 +119,11 @@ def simulate_historical(
     r = returns.values.astype(float)
     if len(r) < months:
         total_years = len(r) // 12
+        required_years = (start_delay_years + years)
         raise ValueError(
-            f"Not enough historical data to simulate {years} years for this market. "
-            f"Only {max(total_years, 0)} years are available. Reduce the horizon or start delay."
+            f"Not enough historical data to simulate {years} years with {start_delay_years} year delay for this market. "
+            f"Need {required_years} years total but only {max(total_years, 0)} years are available. "
+            f"Reduce the horizon or start delay."
         )
     windows = []
     endings = []
@@ -146,16 +148,16 @@ def simulate_historical(
     windows_arr = np.vstack(windows)
     endings_arr = np.array(endings)
     success_rate = float(np.mean(endings_arr > 0.0) * 100.0)
-    q10 = np.percentile(windows_arr, 10, axis=0).tolist()
+    q5 = np.percentile(windows_arr, 5, axis=0).tolist()
     q50 = np.percentile(windows_arr, 50, axis=0).tolist()
-    q90 = np.percentile(windows_arr, 90, axis=0).tolist()
+    q95 = np.percentile(windows_arr, 95, axis=0).tolist()
     sample_path = windows_arr[0, :].tolist()
     return {
         "months": months,
         "num_windows": int(windows_arr.shape[0]),
         "success_rate": success_rate,
         "ending_balances": endings_arr.tolist(),
-        "quantiles": {"p10": q10, "p50": q50, "p90": q90},
+        "quantiles": {"p5": q5, "p50": q50, "p95": q95},
         "sample_path": sample_path,
     }
 
@@ -210,16 +212,16 @@ def simulate_monte_carlo(
     windows_arr = np.vstack(windows)
     endings_arr = np.array(endings)
     success_rate = float(np.mean(endings_arr > 0.0) * 100.0)
-    q10 = np.percentile(windows_arr, 10, axis=0).tolist()
+    q5 = np.percentile(windows_arr, 5, axis=0).tolist()
     q50 = np.percentile(windows_arr, 50, axis=0).tolist()
-    q90 = np.percentile(windows_arr, 90, axis=0).tolist()
+    q95 = np.percentile(windows_arr, 95, axis=0).tolist()
     sample_path = windows_arr[0, :].tolist()
     return {
         "months": months,
         "num_windows": int(windows_arr.shape[0]),
         "success_rate": success_rate,
         "ending_balances": endings_arr.tolist(),
-        "quantiles": {"p10": q10, "p50": q50, "p90": q90},
+        "quantiles": {"p5": q5, "p50": q50, "p95": q95},
         "sample_path": sample_path,
     }
 

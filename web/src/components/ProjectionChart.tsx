@@ -1,12 +1,12 @@
 import { useMemo } from "react"
-import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, ReferenceLine, ReferenceArea } from "recharts"
+import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, ReferenceLine, ReferenceArea, Line, ComposedChart } from "recharts"
 
 export interface SeriesPoint {
   month: number
   year: number
-  p10: number
+  p5: number
   p50: number
-  p90: number
+  p95: number
   band: number
 }
 
@@ -32,6 +32,50 @@ type Props = {
   phases?: ChartPhase[]
 }
 
+// Custom milestone droplet component
+const MilestoneDroplet = (props: any) => {
+  const { cx, cy, payload } = props
+  if (!payload?.milestone) return null
+  
+  // Create a droplet shape with circular top and pointed bottom
+  const circleRadius = 10
+  const dropletHeight = 16
+  const circleCenter = cy - dropletHeight + circleRadius
+  const pointY = cy
+  
+  // Create the droplet path (circle on top, triangle pointing down)
+  const dropletPath = `
+    M ${cx} ${pointY}
+    L ${cx - circleRadius * 0.6} ${circleCenter + circleRadius * 0.6}
+    A ${circleRadius} ${circleRadius} 0 1 1 ${cx + circleRadius * 0.6} ${circleCenter + circleRadius * 0.6}
+    Z
+  `
+  
+  return (
+    <g>
+      {/* Droplet shape */}
+      <path
+        d={dropletPath}
+        fill="#ffffff"
+        stroke="#1e88e5"
+        strokeWidth={2}
+        style={{ filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.2))' }}
+      />
+      {/* Emoji in the circular part */}
+      <text
+        x={cx}
+        y={circleCenter}
+        textAnchor="middle"
+        dominantBaseline="central"
+        fontSize={12}
+        fill="#1e88e5"
+      >
+        {payload.milestone.emoji}
+      </text>
+    </g>
+  )
+}
+
 export default function ProjectionChart({ data, title, currencyCode = "USD", milestones = [], phases = [] }: Props) {
   const locale = currencyCode === "INR" ? "en-IN" : undefined
   const currencyFormatter = useMemo(
@@ -49,6 +93,26 @@ export default function ProjectionChart({ data, title, currencyCode = "USD", mil
     [currencyCode, locale],
   )
 
+  // Enhanced data with milestone information and p95 values
+  const enhancedData = useMemo(() => {
+    const milestoneMap = new Map<number, ChartMilestone>()
+    milestones.forEach(milestone => {
+      milestoneMap.set(milestone.year, milestone)
+    })
+
+    return data.map(point => {
+      // Only show milestones on the first month of the year (month % 12 === 1)
+      const isFirstMonthOfYear = point.month % 12 === 1
+      const milestone = milestoneMap.get(point.year)
+      
+      return {
+        ...point,
+        p95: point.p5 + point.band,
+        milestone: (isFirstMonthOfYear && milestone) ? milestone : null
+      }
+    })
+  }, [data, milestones])
+
   return (
     <div className="panel chart-card">
       <div className="chart-card__header">
@@ -56,7 +120,7 @@ export default function ProjectionChart({ data, title, currencyCode = "USD", mil
       </div>
       <div className="chart-card__body">
         <ResponsiveContainer>
-          <AreaChart data={data} margin={{ left: 16, right: 16, top: 16, bottom: 36 }}>
+          <ComposedChart data={enhancedData} margin={{ left: 16, right: 16, top: 16, bottom: 36 }}>
             <defs>
               <linearGradient id="colorBand" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="#93c5fd" stopOpacity={0.65} />
@@ -64,14 +128,14 @@ export default function ProjectionChart({ data, title, currencyCode = "USD", mil
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
-            <XAxis dataKey="year" ticks={yearTicks(data)} tickLine={false} axisLine={false} dy={8} />
+            <XAxis dataKey="year" ticks={yearTicks(enhancedData)} tickLine={false} axisLine={false} dy={8} />
             <YAxis
               tickFormatter={(value: number) => compactFormatter.format(value)}
               width={88}
               tickLine={false}
               axisLine={false}
             />
-            <Tooltip content={<TooltipContent format={currencyFormatter.format} />} cursor={{ stroke: "#94a3b8", strokeDasharray: "4 4" }} />
+            <Tooltip content={<TooltipContent format={currencyFormatter.format} milestones={milestones} />} cursor={{ stroke: "#94a3b8", strokeDasharray: "4 4" }} />
             {phases.map((phase) => {
               const endYear = phase.end ?? (data[data.length - 1]?.year ?? phase.start)
               return (
@@ -100,10 +164,25 @@ export default function ProjectionChart({ data, title, currencyCode = "USD", mil
                 />
               )
             })}
-            <Area type="monotone" dataKey="p10" stroke="#93c5fd" strokeWidth={2} fillOpacity={0} dot={false} stackId="band" />
-            <Area type="monotone" dataKey="band" stroke="#1e88e5" strokeWidth={2} fill="url(#colorBand)" dot={false} stackId="band" />
+            <Area type="monotone" dataKey="p5" stroke="#93c5fd" strokeWidth={2} fillOpacity={0} dot={false} stackId="band" />
+            <Area 
+              type="monotone" 
+              dataKey="band" 
+              stroke="#1e88e5" 
+              strokeWidth={2} 
+              fill="url(#colorBand)" 
+              dot={false}
+              stackId="band" 
+            />
             <Area type="monotone" dataKey="p50" stroke="#0ea5e9" strokeWidth={2.4} fillOpacity={0} dot={false} />
-          </AreaChart>
+            <Line 
+              type="monotone" 
+              dataKey="p95" 
+              stroke="transparent" 
+              strokeWidth={0} 
+              dot={<MilestoneDroplet />}
+            />
+          </ComposedChart>
         </ResponsiveContainer>
       </div>
     </div>
@@ -124,20 +203,35 @@ type TooltipProps = {
   payload?: any[]
   label?: string | number
   format: (value: number) => string
+  milestones: ChartMilestone[]
 }
 
-function TooltipContent({ active, payload, label, format }: TooltipProps) {
+function TooltipContent({ active, payload, label, format, milestones }: TooltipProps) {
   if (!active || !payload?.length) return null
   const year = Number(label)
-  const p10 = Number(payload.find((p: any) => p.dataKey === "p10")?.value ?? 0)
+  const p5 = Number(payload.find((p: any) => p.dataKey === "p5")?.value ?? 0)
   const band = Number(payload.find((p: any) => p.dataKey === "band")?.value ?? 0)
-  const p90 = p10 + band
+  const p95 = p5 + band
   const p50 = Number(payload.find((p: any) => p.dataKey === "p50")?.value ?? 0)
+  
+  // Find milestones for this year
+  const yearMilestones = milestones.filter(m => m.year === year)
+  
   return (
     <div className="tooltip-card">
       <div className="label" style={{ marginBottom: 4 }}>{year}</div>
       <div><strong>Median:</strong> {format(p50)}</div>
-      <div><strong>Range:</strong> {format(p10)} to {format(p90)}</div>
+      <div><strong>Range:</strong> {format(p5)} to {format(p95)}</div>
+      {yearMilestones.length > 0 && (
+        <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid #e5e7eb" }}>
+          {yearMilestones.map((milestone, idx) => (
+            <div key={idx} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
+              <span style={{ fontSize: "14px" }}>{milestone.emoji}</span>
+              <span style={{ fontSize: "13px", color: "#64748b" }}>{milestone.label}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

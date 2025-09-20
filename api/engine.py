@@ -112,9 +112,9 @@ def simulate_historical(
     success_rate = float(np.mean(endings_arr > 0.0) * 100.0)
 
     # Quantiles across windows at each month
-    q10 = np.percentile(windows_arr, 10, axis=0).tolist()
+    q5 = np.percentile(windows_arr, 5, axis=0).tolist()
     q50 = np.percentile(windows_arr, 50, axis=0).tolist()
-    q90 = np.percentile(windows_arr, 90, axis=0).tolist()
+    q95 = np.percentile(windows_arr, 95, axis=0).tolist()
 
     # Provide a sample path (the first one) to plot a single trajectory if desired
     sample_path = windows_arr[0, :].tolist()
@@ -124,7 +124,7 @@ def simulate_historical(
         "num_windows": int(windows_arr.shape[0]),
         "success_rate": success_rate,
         "ending_balances": endings_arr.tolist(),
-        "quantiles": {"p10": q10, "p50": q50, "p90": q90},
+        "quantiles": {"p5": q5, "p50": q50, "p95": q95},
         "sample_path": sample_path,
     }
 
@@ -171,9 +171,9 @@ def simulate_monte_carlo(
     endings_arr = np.array(endings)
     success_rate = float(np.mean(endings_arr > 0.0) * 100.0)
 
-    q10 = np.percentile(windows_arr, 10, axis=0).tolist()
+    q5 = np.percentile(windows_arr, 5, axis=0).tolist()
     q50 = np.percentile(windows_arr, 50, axis=0).tolist()
-    q90 = np.percentile(windows_arr, 90, axis=0).tolist()
+    q95 = np.percentile(windows_arr, 95, axis=0).tolist()
     sample_path = windows_arr[0, :].tolist()
 
     return {
@@ -181,7 +181,7 @@ def simulate_monte_carlo(
         "num_windows": int(windows_arr.shape[0]),
         "success_rate": success_rate,
         "ending_balances": endings_arr.tolist(),
-        "quantiles": {"p10": q10, "p50": q50, "p90": q90},
+        "quantiles": {"p5": q5, "p50": q50, "p95": q95},
         "sample_path": sample_path,
     }
 

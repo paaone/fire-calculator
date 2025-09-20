@@ -13,9 +13,9 @@ from pydantic import BaseModel
 
 
 class Quantiles(BaseModel):
-    p10: list[float]
+    p5: list[float]
     p50: list[float]
-    p90: list[float]
+    p95: list[float]
 
 
 class SimResult(BaseModel):
