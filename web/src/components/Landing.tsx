@@ -1,4 +1,4 @@
-import Inputs, { StrategyName, MarketSelection } from "./Inputs"
+import Inputs, { StrategyName, MarketSelection, SpendingFrequency } from "./Inputs"
 import { ThemeToggle } from "../theme/ThemeToggle"
 import { SpendingCategoryPlan, FutureExpensePlan, FutureIncomePlan } from "../lib/planning"
 
@@ -16,6 +16,8 @@ type LandingProps = {
   onInitial: (v: number) => void
   spend: number
   onSpend: (v: number) => void
+  spendingFrequency: SpendingFrequency
+  onSpendingFrequencyChange: (v: SpendingFrequency) => void
   years: number
   onYears: (v: number) => void
   strategy: StrategyName
@@ -81,6 +83,8 @@ export default function Landing(p: LandingProps) {
           onInitial={p.onInitial}
           spend={p.spend}
           onSpend={p.onSpend}
+          spendingFrequency={p.spendingFrequency}
+          onSpendingFrequencyChange={p.onSpendingFrequencyChange}
           years={p.years}
           onYears={p.onYears}
           strategy={p.strategy}

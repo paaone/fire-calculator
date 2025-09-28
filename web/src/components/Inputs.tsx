@@ -60,6 +60,7 @@ function inferIncomeCategoryFromLabel(label: string, fallback: FutureIncomePlan[
 }
 
 export type StrategyName = "fixed" | "variable_percentage" | "guardrails"
+export type SpendingFrequency = "annual" | "monthly"
 export type MarketSelection = string
 
 interface MarketOption {
@@ -76,6 +77,8 @@ type Props = {
   onInitial: (v: number) => void
   spend: number
   onSpend: (v: number) => void
+  spendingFrequency: SpendingFrequency
+  onSpendingFrequencyChange: (v: SpendingFrequency) => void
   years: number
   onYears: (v: number) => void
   strategy: StrategyName
@@ -203,6 +206,8 @@ export default function Inputs({
   onInitial,
   spend,
   onSpend,
+  spendingFrequency,
+  onSpendingFrequencyChange,
   years,
   onYears,
   strategy,
@@ -259,6 +264,9 @@ export default function Inputs({
   const incomeLabelOptions = useMemo(() => FUTURE_INCOME_OPTIONS.map((option) => option.label), [])
   const totalBreakdown = totalSpendingFromCategories(spendingCategories)
   const breakdownMatchesSpend = Math.abs(totalBreakdown - spend) < 0.5
+  const spendDisplayValue = spendingFrequency === "monthly" ? spend / 12 : spend
+  const displayBreakdownTotal = spendingFrequency === "monthly" ? totalBreakdown / 12 : totalBreakdown
+  const breakdownUnitLabel = spendingFrequency === "monthly" ? "per month" : "per year"
   const isResultsView = variant === "results"
   const runButtonLabel = running ? "Running..." : "Run simulation"
 
@@ -755,17 +763,49 @@ export default function Inputs({
         title="Core Spending Plan"
         hint="Break your lifestyle costs into categories. We keep everything in today's dollars so you can compare apples to apples."
       />
-      <FieldHeader label="Total annual living expenses" help="We'll scale the category amounts proportionally when you adjust this number." />
-      <CurrencyInput value={spend} onChange={onSpend} currency={currencyCode} />
+      <div style={{ display: "flex", gap: 12, justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap" }}>
+        <div style={{ flex: "1 1 240px" }}>
+          <FieldHeader
+            label={spendingFrequency === "monthly" ? "Total monthly living expenses" : "Total annual living expenses"}
+            help="We'll scale the category amounts proportionally when you adjust this number."
+          />
+        </div>
+        <div className="segmented segmented-sm" role="group" aria-label="Expense breakdown cadence">
+          <button
+            type="button"
+            className={clsx({ active: spendingFrequency === "annual" })}
+            onClick={() => onSpendingFrequencyChange("annual")}
+            aria-pressed={spendingFrequency === "annual"}
+          >
+            Annual
+          </button>
+          <button
+            type="button"
+            className={clsx({ active: spendingFrequency === "monthly" })}
+            onClick={() => onSpendingFrequencyChange("monthly")}
+            aria-pressed={spendingFrequency === "monthly"}
+          >
+            Monthly
+          </button>
+        </div>
+      </div>
+      <CurrencyInput
+        value={spendDisplayValue}
+        onChange={(value) => {
+          const normalized = spendingFrequency === "monthly" ? value * 12 : value
+          onSpend(normalized)
+        }}
+        currency={currencyCode}
+      />
       {!breakdownMatchesSpend && (
         <div className="help" style={{ color: "var(--accent)" }}>
-          Breakdown total is {currencyCode} {totalBreakdown.toLocaleString()}. Adjust categories to match the total above.
+          Breakdown total is {currencyCode} {displayBreakdownTotal.toLocaleString()} {breakdownUnitLabel}. Adjust categories to match the total above.
         </div>
       )}
       <Accordion title="Breakdown By Category (optional)" defaultOpen={false}>
         <div className="category-breakdown">
           <div className="category-breakdown__totals" style={{ color: breakdownMatchesSpend ? "var(--muted)" : "var(--accent)" }}>
-            Breakdown total: {currencyCode} {totalBreakdown.toLocaleString()}
+            Breakdown total: {currencyCode} {displayBreakdownTotal.toLocaleString()} {breakdownUnitLabel}
             {!breakdownMatchesSpend && " (doesn't match total above yet)"}
           </div>
           <div className="category-grid">
@@ -784,7 +824,14 @@ export default function Inputs({
                   value={item.label}
                   onChange={(e) => handleCategoryChange(idx, { label: e.target.value })}
                 />
-                <CurrencyInput value={item.amount} onChange={(value) => handleCategoryChange(idx, { amount: value })} currency={currencyCode} />
+                <CurrencyInput
+                  value={spendingFrequency === "monthly" ? item.amount / 12 : item.amount}
+                  onChange={(value) => {
+                    const normalized = spendingFrequency === "monthly" ? value * 12 : value
+                    handleCategoryChange(idx, { amount: normalized })
+                  }}
+                  currency={currencyCode}
+                />
                 <input
                   className="input"
                   type="number"
@@ -1006,4 +1053,3 @@ export default function Inputs({
     </div>
   )
 }
-

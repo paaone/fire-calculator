@@ -17,6 +17,8 @@ const makeProps = (overrides: Partial<InputsProps> = {}): InputsProps => ({
   onInitial: vi.fn(),
   spend: 40_000,
   onSpend: vi.fn(),
+  spendingFrequency: "annual",
+  onSpendingFrequencyChange: vi.fn(),
   years: 30,
   onYears: vi.fn(),
   strategy: "fixed",
@@ -68,6 +70,15 @@ describe("Inputs", () => {
     const indiaButton = screen.getByRole("button", { name: /india/i })
     fireEvent.click(indiaButton)
     expect(onMarketChange).toHaveBeenCalledWith("india")
+  })
+
+  it("allows toggling spending frequency", () => {
+    const onSpendingFrequencyChange = vi.fn()
+    render(<Inputs {...makeProps({ onSpendingFrequencyChange })} />)
+
+    const monthlyButton = screen.getByRole("button", { name: /monthly/i })
+    fireEvent.click(monthlyButton)
+    expect(onSpendingFrequencyChange).toHaveBeenCalledWith("monthly")
   })
 
   it("shows expense and income controls", () => {

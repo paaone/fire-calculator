@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query"
 import ProjectionChart, { SeriesPoint, ChartMilestone, ChartPhase } from "./components/ProjectionChart"
 import CashFlowTable, { CashFlowRow } from "./components/CashFlowTable"
 import Histogram from "./components/Histogram"
-import Inputs, { StrategyName } from "./components/Inputs"
+import Inputs, { StrategyName, SpendingFrequency } from "./components/Inputs"
 import Landing from "./components/Landing"
 import Accordion from "./components/Accordion"
 import { FaCircleCheck, FaCircleExclamation } from "react-icons/fa6"
@@ -73,37 +73,54 @@ interface HistoricalAnalysis {
   worstCase: number
   zeroYear: number | null
   yearsToZero: number | null
+  horizonYears: number
 }
 
-function analyzeHistoricalResults(hist: any, years: number, currencyCode: string, valueUnits: "real" | "nominal", inflationPct: number): HistoricalAnalysis {
+function inferHorizonYears(result: any, plannedYears: number): number {
+  const fallback = Math.max(0, Math.round(plannedYears))
+  if (!result) return fallback
+  const monthsValue = Number(result?.months)
+  const monthsYears = Number.isFinite(monthsValue) ? Math.round(monthsValue / 12) : 0
+  const sampleLength = Array.isArray(result?.sample_path) ? result.sample_path.length : 0
+  const sampleYears = sampleLength > 0 ? Math.round(sampleLength / 12) : 0
+  const quantileLength = Array.isArray(result?.quantiles?.p50) ? result.quantiles.p50.length : 0
+  const quantileYears = quantileLength > 0 ? Math.round(quantileLength / 12) : 0
+  return Math.max(fallback, monthsYears, sampleYears, quantileYears)
+}
+
+function analyzeHistoricalResults(hist: any, plannedYears: number, currencyCode: string, valueUnits: "real" | "nominal", inflationPct: number): HistoricalAnalysis {
   if (!hist || !hist.ending_balances || !hist.sample_path) {
+    const fallbackYears = Math.max(0, Math.round(plannedYears))
     return {
       successRate: 0,
       bestCase: 0,
       worstCase: 0,
       zeroYear: null,
-      yearsToZero: null
+      yearsToZero: null,
+      horizonYears: fallbackYears
     }
   }
 
+  const horizonYears = inferHorizonYears(hist, plannedYears)
+  const adjustYears = Math.max(horizonYears, 0)
   // Apply the same transformation as the histogram for consistency
-  const adjustedBalances = valueUnits === "nominal" 
-    ? hist.ending_balances.map((v: number) => v * Math.pow(1 + inflationPct / 100, years))
+  const adjustedBalances = valueUnits === "nominal"
+    ? hist.ending_balances.map((v: number) => v * Math.pow(1 + inflationPct / 100, adjustYears))
     : hist.ending_balances
 
   const bestCase = Math.max(...adjustedBalances)
   const worstCase = Math.min(...adjustedBalances)
-  
+
   // Check if portfolio goes to zero in the sample path
   let zeroYear: number | null = null
   let yearsToZero: number | null = null
-  
+
   if (hist.sample_path && hist.sample_path.length > 0) {
     const monthsInPath = hist.sample_path.length
     for (let i = 0; i < monthsInPath; i++) {
       if (hist.sample_path[i] <= 0) {
         zeroYear = Math.floor(i / 12) + 1 // Convert months to years (1-indexed)
-        yearsToZero = years - zeroYear + 1 // Years remaining after hitting zero
+        yearsToZero = Math.max(adjustYears - zeroYear + 1, 0)
         break
       }
     }
@@ -114,7 +131,8 @@ function analyzeHistoricalResults(hist: any, years: number, currencyCode: string
     bestCase,
     worstCase,
     zeroYear,
-    yearsToZero
+    yearsToZero,
+    horizonYears: adjustYears
   }
 }
 
@@ -168,6 +186,7 @@ export default function App() {
   const [spendingCategories, setSpendingCategories] = useState<SpendingCategoryPlan[]>(() =>
     defaultSpendingCategories(40_000),
   )
+  const [spendingFrequency, setSpendingFrequency] = useState<SpendingFrequency>('annual')
   const [futureExpenses, setFutureExpenses] = useState<FutureExpensePlan[]>([])
   const [futureIncomes, setFutureIncomes] = useState<FutureIncomePlan[]>([])
   const [nPaths, setNPaths] = useState(1000)
@@ -197,6 +216,11 @@ export default function App() {
     setSpend(safe)
     setSpendingCategories((prev) => scaleSpendingCategories(prev, safe))
   }, [spend, markCustom])
+
+  const handleSpendingFrequencyChange = useCallback((value: SpendingFrequency) => {
+    if (value === spendingFrequency) return
+    setSpendingFrequency(value)
+  }, [spendingFrequency])
 
   const handleSpendingCategoriesChange = useCallback((rows: SpendingCategoryPlan[]) => {
     markCustom()
@@ -423,6 +447,11 @@ export default function App() {
     ],
   )
 
+  const workingYears = Math.max(0, Math.round(startDelayYears))
+  const retirementYears = Math.max(0, Math.round(years))
+  const totalPlannedYears = workingYears + retirementYears
+
+
   const histQuery = useQuery({
     queryKey: ["historical", requestPayload],
     queryFn: () => fetchHistorical(requestPayload),
@@ -439,6 +468,7 @@ export default function App() {
   const errorMessage = histQuery.error || mcQuery.error ? String(histQuery.error ?? mcQuery.error) : ""
   const hist = histQuery.data
   const mc = mcQuery.data
+  const histHorizonYears = inferHorizonYears(hist, totalPlannedYears)
   const showHistoricalSuccess = Boolean(hist && hist.success_rate >= 80)
   const showHistoricalWarn = Boolean(hist && hist.success_rate < 80)
 
@@ -448,6 +478,7 @@ export default function App() {
       setInitial(d.initial)
       setSpendingCategories(defaultSpendingCategories(d.spend))
       setSpend(d.spend)
+      setSpendingFrequency('annual')
       setYears(d.years)
       setInflationPct(d.inflation_pct)
       setExpectedRealReturn(d.expected_real_return_pct)
@@ -504,6 +535,8 @@ export default function App() {
     const nextSpend = num("s", spend)
     setYears(num("y", years))
     setStillWorking(str("sw", "1") === "1")
+    const freqParam = str("sf", "annual")
+    setSpendingFrequency(freqParam === "monthly" ? "monthly" : "annual")
     setAnnualContrib(num("ac", annualContrib))
     setExpectedRealReturn(num("er", expectedRealReturn))
     setStartDelayYears(num("sd", startDelayYears))
@@ -624,18 +657,21 @@ export default function App() {
 
   const chartPhases = useMemo<ChartPhase[]>(() => {
     const phases: ChartPhase[] = []
-    const horizonYear = baseYear + Math.max(0, Math.round(years))
-    if (stillWorking) {
-      const retireYear = baseYear + Math.max(0, Math.round(startDelayYears))
+    if (totalPlannedYears <= 0) return phases
+    const horizonYear = baseYear + totalPlannedYears
+    if (stillWorking && workingYears > 0) {
+      const retireYear = baseYear + workingYears
       if (retireYear > baseYear) {
         phases.push({ start: baseYear, end: retireYear, color: 'rgba(37, 99, 235, 0.16)', label: 'Working years' })
       }
-      phases.push({ start: retireYear, end: horizonYear, color: 'rgba(16, 185, 129, 0.14)', label: 'Retirement years' })
-    } else {
+      if (horizonYear > retireYear) {
+        phases.push({ start: retireYear, end: horizonYear, color: 'rgba(16, 185, 129, 0.14)', label: 'Retirement years' })
+      }
+    } else if (horizonYear > baseYear) {
       phases.push({ start: baseYear, end: horizonYear, color: 'rgba(16, 185, 129, 0.14)', label: 'Retirement years' })
     }
     return phases.filter((phase) => Number.isFinite(phase.start) && (phase.end === undefined || Number.isFinite(phase.end)))
-  }, [stillWorking, startDelayYears, years, baseYear])
+  }, [stillWorking, workingYears, totalPlannedYears, baseYear])
 
   const chartMilestones = useMemo<ChartMilestone[]>(() => {
     const map = new Map<number, ChartMilestone>()
@@ -652,9 +688,11 @@ export default function App() {
       }
     }
 
-    if (stillWorking) {
-      const retirementYear = baseYear + Math.max(0, Math.round(startDelayYears))
-      addMilestone(retirementYear, RETIREMENT_EMOJI, "Retirement", true)
+    if (stillWorking && workingYears > 0) {
+      const retirementYear = baseYear + workingYears
+      if (retirementYear > baseYear) {
+        addMilestone(retirementYear, RETIREMENT_EMOJI, "Retirement", true)
+      }
     }
 
     futureExpenses
@@ -667,7 +705,7 @@ export default function App() {
       })
 
     return Array.from(map.values()).sort((a, b) => a.year - b.year)
-  }, [stillWorking, startDelayYears, futureExpenses, baseYear])
+  }, [stillWorking, workingYears, futureExpenses, baseYear])
 
   const toSeries = useCallback(
     (res: any): SeriesPoint[] =>
@@ -721,7 +759,7 @@ export default function App() {
       const unitFactor = valueUnits === "nominal" ? Math.pow(inflationRate, y) : 1
       let baseBasic = 0
 
-      if (stillWorking && y < startDelayYears) {
+      if (stillWorking && y < workingYears) {
         baseBasic = Math.max(annualContrib, 0)
       } else if (strategyName === "variable_percentage") {
         baseBasic = Math.max(0, startMedianReal * vpct)
@@ -748,7 +786,7 @@ export default function App() {
       const netIncome = recurringIncome + otherIncome
       const cashFlow = basic + otherSpending - netIncome
       const age = currentAge > 0 ? currentAge + y : undefined
-      const isSavingsYear = stillWorking && y < startDelayYears
+      const isSavingsYear = stillWorking && y < workingYears
 
       rows.push({
         year: baseYear + y,
@@ -863,6 +901,7 @@ export default function App() {
     params.set("st", strategyName)
     params.set("inf", String(inflationPct))
     params.set("vu", valueUnits)
+    params.set("sf", spendingFrequency)
     if (currentAge) params.set("age", String(currentAge))
     if (strategyName === "variable_percentage") params.set("vp", String(vpwPct))
     if (strategyName === "guardrails") {
@@ -921,6 +960,8 @@ export default function App() {
         onInitial={handleInitialChange}
         spend={spend}
         onSpend={handleSpendChange}
+        spendingFrequency={spendingFrequency}
+        onSpendingFrequencyChange={handleSpendingFrequencyChange}
         years={years}
         onYears={handleYearsChange}
         strategy={strategyName}
@@ -977,6 +1018,8 @@ export default function App() {
             onInitial={handleInitialChange}
             spend={spend}
             onSpend={handleSpendChange}
+            spendingFrequency={spendingFrequency}
+            onSpendingFrequencyChange={handleSpendingFrequencyChange}
             years={years}
             onYears={handleYearsChange}
             strategy={strategyName}
@@ -1065,7 +1108,7 @@ export default function App() {
               </div>
 
               {hist && (() => {
-                const analysis = analyzeHistoricalResults(hist, years, currencyCode, valueUnits, inflationPct)
+                const analysis = analyzeHistoricalResults(hist, totalPlannedYears, currencyCode, valueUnits, inflationPct)
                 return (
                   <div className="callout" style={{ backgroundColor: 'var(--color-surface-secondary)', border: '1px solid var(--color-border)' }}>
                     <div style={{ marginBottom: '12px' }}>
@@ -1081,14 +1124,14 @@ export default function App() {
                       <div>
                         <div style={{ fontWeight: 'bold', color: '#16a34a' }}>Best Case Scenario</div>
                         <div style={{ fontSize: '1.2em', fontWeight: 'bold' }}>{formatCurrencyCompact(analysis.bestCase, currencyCode)}</div>
-                        <div style={{ fontSize: '0.85em', color: 'var(--color-text-secondary)' }}>Highest portfolio value after {years} years</div>
+                        <div style={{ fontSize: '0.85em', color: 'var(--color-text-secondary)' }}>Highest portfolio value after {analysis.horizonYears} years</div>
                       </div>
                       
                       <div>
                         <div style={{ fontWeight: 'bold', color: '#dc2626' }}>Worst Case Scenario</div>
                         <div style={{ fontSize: '1.2em', fontWeight: 'bold' }}>{formatCurrencyCompact(analysis.worstCase, currencyCode)}</div>
                         <div style={{ fontSize: '0.85em', color: 'var(--color-text-secondary)' }}>
-                          {analysis.worstCase <= 0 ? 'Portfolio depleted' : `Lowest portfolio value after ${years} years`}
+                          {analysis.worstCase <= 0 ? 'Portfolio depleted' : `Lowest portfolio value after ${analysis.horizonYears} years`}
                         </div>
                       </div>
 
@@ -1108,7 +1151,7 @@ export default function App() {
                         <div style={{ fontWeight: 'bold', color: '#2563eb' }}>Success Rate</div>
                         <div style={{ fontSize: '1.2em', fontWeight: 'bold' }}>{analysis.successRate.toFixed(1)}%</div>
                         <div style={{ fontSize: '0.85em', color: 'var(--color-text-secondary)' }}>
-                          {hist.num_windows} historical {years}-year periods tested
+                          {hist.num_windows} historical {analysis.horizonYears}-year periods tested
                         </div>
                       </div>
                     </div>
@@ -1117,7 +1160,7 @@ export default function App() {
               })()}
               <ProjectionChart data={toSeriesWithUnits(hist)} title={`Historical projection (${unitLabel})`} currencyCode={currencyCode} milestones={chartMilestones} phases={chartPhases} />
               <Histogram
-                values={valueUnits === "nominal" ? hist!.ending_balances.map((v) => v * Math.pow(1 + inflationPct / 100, years)) : hist!.ending_balances}
+                values={valueUnits === "nominal" ? hist!.ending_balances.map((v) => v * Math.pow(1 + inflationPct / 100, histHorizonYears)) : hist!.ending_balances}
                 title={`Historical ending balances (${unitLabel})`}
                 currencyCode={currencyCode}
               />
